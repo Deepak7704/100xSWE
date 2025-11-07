@@ -65,6 +65,11 @@ export class JobProcessor {
       console.log('Step 3: Cloning repository...');
       const repoPath = await this.gitService.cloneRepository(sandbox, forkUrl);
 
+      // Step 3.5: Detect package manager
+      console.log('Step 3.5: Detecting package manager...');
+      const packageManager = await this.sandboxService.detectPackageManager(sandbox, repoPath);
+      console.log(`Detected package manager: ${packageManager}\n`);
+
       // Step 4: Find relevant files using Hybrid Search (BM25 + Vector)
       await job.updateProgress(40);
       console.log('Step 4: Finding relevant files using Hybrid Search...');
@@ -99,7 +104,8 @@ export class JobProcessor {
         fileContents,
         relevantFiles,
         allFiles,
-        keywords
+        keywords,
+        packageManager  // ← Pass package manager to AI
       );
 
       // Step 8: Execute file operations
@@ -110,7 +116,7 @@ export class JobProcessor {
       // Step 9: Run shell commands if needed
       if (generation.shellCommands && generation.shellCommands.length > 0) {
         console.log('Step 9: Running shell commands...');
-        await this.sandboxService.runShellCommands(sandbox, generation.shellCommands, repoPath);
+        await this.sandboxService.runShellCommands(sandbox, generation.shellCommands, repoPath, packageManager);
       }
 
       // Step 10: Create branch, commit, and push

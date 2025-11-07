@@ -39,8 +39,8 @@ export class HybridSearchService {
   private readonly RRF_K = 60;
 
   // Weights for combining scores (if using weighted average instead of RRF)
-  private readonly BM25_WEIGHT = 0.4;
-  private readonly VECTOR_WEIGHT = 0.6;
+  private readonly BM25_WEIGHT = 0.3;
+  private readonly VECTOR_WEIGHT = 0.7;
 
   constructor(redis: Redis, repoId: string) {
     this.redis = redis;
@@ -61,13 +61,13 @@ export class HybridSearchService {
     // Load BM25 index from Redis
     const bm25Loaded = await this.bm25Service.loadFromRedis();
     if (!bm25Loaded) {
-      console.warn('⚠️  BM25 index not found. Hybrid search will use vector-only mode.\n');
+      console.warn('Warning: BM25 index not found. Hybrid search will use vector-only mode.\n');
     }
 
-    // Initialize Pinecone
-    await this.vectorDBService.initialize();
+    // Initialize Pinecone with repository-specific namespace
+    await this.vectorDBService.initialize(this.repoId);
 
-    console.log('✅ Hybrid search initialized\n');
+    console.log('Hybrid search initialized\n');
   }
 
   /**

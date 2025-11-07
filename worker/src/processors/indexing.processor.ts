@@ -78,7 +78,7 @@ export class IndexingProcessor {
 
       console.log('STEP 4: Storing vectors\n');
       const vectorDB = new VectorDBService();
-      await vectorDB.initialize();
+      await vectorDB.initialize(repoId);
 
       const vectors = chunks
         .map((chunk, idx) => {

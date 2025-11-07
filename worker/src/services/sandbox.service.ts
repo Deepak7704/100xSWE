@@ -111,13 +111,129 @@ export class SandboxService {
   }
 
   /**
+   * Detect package manager used by the repository
+   * Returns package manager type for proper command generation
+   */
+  async detectPackageManager(sandbox: Sandbox, repoPath: string): Promise<string> {
+    try {
+      // Check for pnpm-lock.yaml
+      const pnpmCheck = await sandbox.commands.run(`[ -f ${repoPath}/pnpm-lock.yaml ] && echo "exists" || echo "not found"`);
+      if (pnpmCheck.stdout.trim() === 'exists') {
+        return 'pnpm';
+      }
+
+      // Check for yarn.lock
+      const yarnCheck = await sandbox.commands.run(`[ -f ${repoPath}/yarn.lock ] && echo "exists" || echo "not found"`);
+      if (yarnCheck.stdout.trim() === 'exists') {
+        return 'yarn';
+      }
+
+      // Check for package-lock.json (npm)
+      const npmCheck = await sandbox.commands.run(`[ -f ${repoPath}/package-lock.json ] && echo "exists" || echo "not found"`);
+      if (npmCheck.stdout.trim() === 'exists') {
+        return 'npm';
+      }
+
+      // Check for requirements.txt or pyproject.toml (Python)
+      const pythonCheck = await sandbox.commands.run(`[ -f ${repoPath}/requirements.txt ] || [ -f ${repoPath}/pyproject.toml ] && echo "exists" || echo "not found"`);
+      if (pythonCheck.stdout.trim() === 'exists') {
+        return 'pip';
+      }
+
+      // Check for Gemfile (Ruby)
+      const rubyCheck = await sandbox.commands.run(`[ -f ${repoPath}/Gemfile ] && echo "exists" || echo "not found"`);
+      if (rubyCheck.stdout.trim() === 'exists') {
+        return 'bundler';
+      }
+
+      // Check for Cargo.toml (Rust)
+      const rustCheck = await sandbox.commands.run(`[ -f ${repoPath}/Cargo.toml ] && echo "exists" || echo "not found"`);
+      if (rustCheck.stdout.trim() === 'exists') {
+        return 'cargo';
+      }
+
+      // Check for go.mod (Go)
+      const goCheck = await sandbox.commands.run(`[ -f ${repoPath}/go.mod ] && echo "exists" || echo "not found"`);
+      if (goCheck.stdout.trim() === 'exists') {
+        return 'go';
+      }
+
+      // Default to npm if nothing detected
+      return 'npm';
+    } catch (error) {
+      console.warn('Error detecting package manager, defaulting to npm:', error);
+      return 'npm';
+    }
+  }
+
+  /**
+   * Ensure package manager is installed in the sandbox
+   */
+  private async ensurePackageManagerInstalled(sandbox: Sandbox, packageManager: string): Promise<void> {
+    try {
+      // Check if package manager is available
+      const checkResult = await sandbox.commands.run(`which ${packageManager}`);
+
+      if (checkResult.exitCode === 0) {
+        console.log(`  Package manager '${packageManager}' is already installed\n`);
+        return;
+      }
+    } catch (error) {
+      // Package manager not found, install it
+      console.log(`  Installing ${packageManager}...`);
+
+      try {
+        if (packageManager === 'pnpm') {
+          await sandbox.commands.run('npm install -g pnpm', { timeoutMs: 120000 });
+          console.log(`  Successfully installed pnpm\n`);
+        } else if (packageManager === 'yarn') {
+          await sandbox.commands.run('npm install -g yarn', { timeoutMs: 120000 });
+          console.log(`  Successfully installed yarn\n`);
+        } else if (packageManager === 'cargo') {
+          console.log(`  Warning: Cargo not available, skipping installation (requires Rust)\n`);
+        } else if (packageManager === 'go') {
+          console.log(`  Warning: Go not available, skipping installation\n`);
+        }
+        // npm, pip, bundler are usually pre-installed or don't need global install
+      } catch (installError) {
+        console.warn(`  Failed to install ${packageManager}: ${(installError as Error).message}`);
+        console.log(`  Will attempt to run commands anyway...\n`);
+      }
+    }
+  }
+
+  /**
    * Execute shell commands in the sandbox
    * Extracted from worker.ts lines 130-134
+   *
+   * Commands are non-fatal - if they fail, we log and continue
    */
-  async runShellCommands(sandbox: Sandbox, commands: string[], repoPath: string): Promise<void> {
+  async runShellCommands(sandbox: Sandbox, commands: string[], repoPath: string, packageManager?: string): Promise<void> {
     if (commands && commands.length > 0) {
+      // Ensure package manager is installed if specified
+      if (packageManager && (packageManager === 'pnpm' || packageManager === 'yarn')) {
+        await this.ensurePackageManagerInstalled(sandbox, packageManager);
+      }
+
       for (const command of commands) {
-        await sandbox.commands.run(`cd ${repoPath} && ${command}`, { timeoutMs: 180000 });
+        try {
+          console.log(`  Running: ${command}`);
+          const result = await sandbox.commands.run(`cd ${repoPath} && ${command}`, { timeoutMs: 180000 });
+
+          if (result.stdout) {
+            console.log(`  Output: ${result.stdout.substring(0, 200)}`);
+          }
+          if (result.stderr) {
+            console.warn(`  Warning: ${result.stderr.substring(0, 200)}`);
+          }
+
+          console.log(`  Command completed successfully\n`);
+        } catch (error) {
+          console.warn(`  Command failed (non-fatal): ${command}`);
+          console.warn(`  Error: ${(error as Error).message}`);
+          console.log(`  Continuing with next steps...\n`);
+          // Don't throw - continue with remaining commands
+        }
       }
     }
   }

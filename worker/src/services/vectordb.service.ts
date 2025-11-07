@@ -10,15 +10,30 @@ export class VectorDBService {
   private pinecone: Pinecone | null = null;
   private index: any = null;
   private readonly INDEX_NAME = 'openswe-code-index';
-  private readonly NAMESPACE = 'code-chunks';
+  private namespace: string = 'code-chunks'; // Will be set per repository
   private readonly HOST_URL = process.env.PINECONE_HOST;
 
-  async initialize(): Promise<void> {
+  /**
+   * Set the namespace for this repository
+   * This ensures vectors are isolated per repository
+   */
+  setNamespace(repoId: string): void {
+    // Convert repoId (e.g., "owner/repo") to valid namespace format
+    // Pinecone namespaces must be alphanumeric + hyphens/underscores
+    this.namespace = `repo-${repoId.replace(/[^a-zA-Z0-9]/g, '-')}`;
+  }
+
+  async initialize(repoId?: string): Promise<void> {
     console.log('Initializing Pinecone...');
     console.log(`Host: ${this.HOST_URL}`);
 
     if (!this.HOST_URL) {
       throw new Error('PINECONE_HOST environment variable is not set');
+    }
+
+    // Set namespace if repoId is provided
+    if (repoId) {
+      this.setNamespace(repoId);
     }
 
     this.pinecone = new Pinecone({
@@ -35,7 +50,8 @@ export class VectorDBService {
       throw new Error('VectorDB not initialized');
     }
 
-    console.log(`Upserting ${vectors.length} vectors to Pinecone...\n`);
+    console.log(`Upserting ${vectors.length} vectors to Pinecone...`);
+    console.log(`Namespace: ${this.namespace}\n`);
 
     const BATCH_SIZE = 100;
 
@@ -46,14 +62,14 @@ export class VectorDBService {
 
       console.log(`Batch ${batchNumber}/${totalBatches}`);
 
-      await this.index.namespace(this.NAMESPACE).upsert(batch);
+      await this.index.namespace(this.namespace).upsert(batch);
 
       if (i + BATCH_SIZE < vectors.length) {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
 
-    console.log(`Stored ${vectors.length} vectors in Pinecone\n`);
+    console.log(`Stored ${vectors.length} vectors in Pinecone (namespace: ${this.namespace})\n`);
   }
 
   async queryVectors(
@@ -64,7 +80,9 @@ export class VectorDBService {
       throw new Error('VectorDB not initialized');
     }
 
-    const results = await this.index.namespace(this.NAMESPACE).query({
+    console.log(`Querying Pinecone namespace: ${this.namespace}`);
+
+    const results = await this.index.namespace(this.namespace).query({
       vector: queryVector,
       topK: topK,
       includeMetadata: true
@@ -82,7 +100,8 @@ export class VectorDBService {
       throw new Error('VectorDB not initialized');
     }
 
-    await this.index.namespace(this.NAMESPACE).deleteAll();
+    console.log(`Deleting namespace: ${this.namespace}`);
+    await this.index.namespace(this.namespace).deleteAll();
     console.log('Namespace cleared\n');
   }
 }

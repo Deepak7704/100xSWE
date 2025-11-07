@@ -214,9 +214,10 @@ export class AIService {
     fileContents: Map<string, string>,
     relevantFiles: string[],
     allFiles: string[],
-    keywords: string[]
+    keywords: string[],
+    packageManager: string = 'npm'
   ): Promise<GenerateOutput> {
-    const prompt = this.buildPrompt(repoUrl, task, fileContents, relevantFiles, allFiles, keywords);
+    const prompt = this.buildPrompt(repoUrl, task, fileContents, relevantFiles, allFiles, keywords, packageManager);
 
     console.log('Calling generateObject with schema...');
     const startTime = Date.now();
@@ -249,7 +250,8 @@ export class AIService {
     fileContents: Map<string, string>,
     candidateFiles: string[],
     allFiles: string[],
-    keywords: string[]
+    keywords: string[],
+    packageManager: string
   ): string {
     let filesToModifySection = '';
     fileContents.forEach((content, path) => {
@@ -259,11 +261,15 @@ export class AIService {
     const candidatesList = candidateFiles.map((f, i) => `  ${i + 1}. ${f}`).join('\n');
     const fileTreeSection = allFiles.slice(0, 100).join('\n');
 
+    // Package manager specific instructions
+    const packageManagerInstructions = this.getPackageManagerInstructions(packageManager);
+
     return `You are an expert software developer modifying an existing codebase.
 
 REPOSITORY: ${repoUrl}
 USER REQUEST: ${task}
 SEARCH KEYWORDS: ${keywords.join(', ')}
+PACKAGE MANAGER: ${packageManager}
 
 === FILES TO MODIFY ===
 ${filesToModifySection}
@@ -292,7 +298,7 @@ OUTPUT REQUIREMENTS:
   - searchReplace: (for updateFile) Array of {search: string, replace: string} patterns
 
 - **shellCommands**: Array of commands (ONLY if absolutely necessary)
-  - Example: ["npm install lodash"] if adding new dependency
+  ${packageManagerInstructions}
   - Default: [] (empty array if no commands needed)
 
 - **explanation**: Brief explanation of what changed and why
@@ -328,5 +334,22 @@ EXAMPLE OUTPUT FOR MULTIPLE FILES:
 \`\`\`
 
 Remember: You must generate operations for ALL files in the "FILES TO MODIFY" section!`;
+  }
+
+  /**
+   * Get package manager specific instructions for AI
+   */
+  private getPackageManagerInstructions(packageManager: string): string {
+    const instructions: Record<string, string> = {
+      'npm': '- Example: ["npm install lodash"] for adding dependencies',
+      'pnpm': '- IMPORTANT: Use "pnpm add <package>" NOT "npm install".\n  - Example: ["pnpm add lodash"]',
+      'yarn': '- IMPORTANT: Use "yarn add <package>" NOT "npm install".\n  - Example: ["yarn add lodash"]',
+      'pip': '- IMPORTANT: Use "pip install <package>" for Python dependencies.\n  - Example: ["pip install requests"]',
+      'cargo': '- IMPORTANT: Use "cargo add <package>" for Rust dependencies.\n  - Example: ["cargo add serde"]',
+      'go': '- IMPORTANT: Use "go get <package>" for Go dependencies.\n  - Example: ["go get github.com/gin-gonic/gin"]',
+      'bundler': '- IMPORTANT: Use "bundle add <gem>" for Ruby dependencies.\n  - Example: ["bundle add rails"]',
+    };
+
+    return instructions[packageManager] || instructions['npm'];
   }
 }
