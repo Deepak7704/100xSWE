@@ -14,6 +14,8 @@ import { GitService } from '../services/git.service';
 import { SandboxService } from '../services/sandbox.service';
 import { AIService } from '../services/ai.service';
 import { generateBranchName, extractKeywords } from '../utils/helpers';
+import { EnhancedCodeGraphService } from '../services/code_graph.service';
+import { CodeSkeletonService } from '../services/code_skeleton';
 
 export class JobProcessor {
   private redis: Redis;
@@ -84,10 +86,44 @@ export class JobProcessor {
         throw new Error('No relevant files found. Repository may not be indexed yet.');
       }
 
-      // Step 5: Select files to modify using LLM
+      console.log('Step 4.5:Building the code graph and code skeletons for candidate files');
+      const graphService = new EnhancedCodeGraphService();
+      const codeSkeletonService = new CodeSkeletonService();
+
+      const candidateContents = await this.sandboxService.getFileContents(sandbox,relevantFiles,Infinity,repoPath);
+      //Build code graph
+      const codeGraph = graphService.buildGraph(candidateContents);
+      console.log(`code graph build for the above candidate files ${codeGraph.nodes.size} nodes extracted`);
+
+
+      const skeletons = new Map<string,string>();
+      relevantFiles.forEach(filePath => {
+        const skeleton = codeSkeletonService.generateSkeleton(codeGraph,filePath);
+        const formatted = codeSkeletonService.formatSkeletonForLLM(skeleton);
+        skeletons.set(filePath,formatted);
+      })
+      console.log(`Generated ${skeletons.size} code skeletons for llm analysis`);
+
+      // Step 5: Select files to modify using LLM (with fallback to hybrid search ranking)
       console.log('Step 5: Selecting files to modify...');
       const keywords = extractKeywords(task);
-      const filesToModify = await this.aiService.selectFilesToModify(sandbox, task, relevantFiles, repoPath);
+      let filesToModify = await this.aiService.selectFilesToModifyWithSkeletons(task,skeletons,repoPath);
+
+      // FALLBACK: If LLM selected 0 files, use top-ranked files from hybrid search
+      if (filesToModify.length === 0) {
+        console.warn('\n🔄 FALLBACK TRIGGERED: LLM selected 0 files');
+        console.warn('Using top-ranked files from hybrid search results instead...\n');
+
+        // Take top 3-5 files from relevantFiles (already ranked by hybrid search)
+        const topN = Math.min(5, relevantFiles.length);
+        filesToModify = relevantFiles.slice(0, topN);
+
+        console.log(`Fallback selected top ${filesToModify.length} files from hybrid search:`);
+        filesToModify.forEach((file, idx) => {
+          console.log(`  ${idx + 1}. ${file}`);
+        });
+        console.log('');
+      }
 
       // Step 6: Read file contents and get project structure
       await job.updateProgress(60);

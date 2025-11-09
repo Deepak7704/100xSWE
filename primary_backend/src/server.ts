@@ -3,6 +3,7 @@ import cors from 'cors';
 import 'dotenv/config';
 import { Queue } from 'bullmq';
 import Redis from 'ioredis';
+import webhookRoute from '../routes/webhook';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,7 +26,17 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use(express.json({ limit: '10mb' }));
+// Configure JSON parser with raw body capture for webhook signature verification
+// The 'verify' function runs BEFORE JSON parsing and stores the raw buffer
+// This is essential because GitHub signs the raw payload, not the parsed JSON
+app.use(express.json({
+  limit: '10mb',
+  verify: (req: any, res, buf) => {
+    // Store raw buffer in req.rawBody for webhook signature verification
+    // Without this, we can't verify GitHub webhook signatures
+    req.rawBody = buf;
+  }
+}));
 
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
@@ -146,6 +157,10 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'primary-backend' });
 });
 
+// Mount webhook route
+// This handles GitHub webhook events (push, pull_request, etc.)
+app.use('/webhook', webhookRoute);
+
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('Error:', err);
   res.status(500).json({
@@ -155,10 +170,12 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`POST /api/chat - Old chat endpoint`);
-  console.log(`POST /api/index - New indexing endpoint`);
+  console.log(`POST /api/chat - Chat endpoint`);
+  console.log(`POST /api/index - Indexing endpoint`);
   console.log(`GET /api/status/:jobId - Chat job status`);
   console.log(`GET /api/index-status/:jobId - Indexing job status`);
+  console.log(`POST /webhook/github - GitHub webhook endpoint`);
+  console.log(`GET /webhook/health - Webhook health check`);
   console.log(`GET /health - Health check\n`);
   console.log(`CORS enabled for: ${FRONTEND_URL}`);
   console.log(`Queue: Redis on ${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`);

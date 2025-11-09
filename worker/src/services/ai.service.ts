@@ -3,9 +3,9 @@
  *
  * Handles all AI-related operations:
  * - File discovery using LangGraph
- * - LLM-based file selection
- * - AI code generation
- * - Prompt building
+ * - LLM-based file selection (with code skeletons)
+ * - AI code generation with enhanced context
+ * - Prompt building with structural summaries
  *
  * Extracted from worker.ts lines 70-120, 173-251
  * and sandbox_executor.ts lines 93-129, 170-238
@@ -128,6 +128,8 @@ export class AIService {
   /**
    * Use LLM to select which files need modification
    * Extracted from sandbox_executor.ts lines 170-238
+   * 
+   * NOTE: This method reads full file contents - use selectFilesToModifyWithSkeletons() for better performance
    */
   async selectFilesToModify(
     sandbox: Sandbox,
@@ -205,6 +207,141 @@ export class AIService {
   }
 
   /**
+   * Select files to modify using CODE SKELETONS (not full content)
+   * This saves ~70-80% of LLM tokens while maintaining full context
+   */
+  async selectFilesToModifyWithSkeletons(
+  userPrompt: string,
+  skeletons: Map<string, string>,
+  repoPath: string
+): Promise<string[]> {
+  console.log(`\nAnalyzing ${skeletons.size} files using code skeletons...`);
+
+  let skeletonsSection = '';
+  skeletons.forEach((skeleton, path) => {
+    skeletonsSection += `\n${skeleton}\n`;
+  });
+
+  const llmPrompt = `You are a code analysis expert. Your task is to identify which files need modification based on a user's request.
+
+USER REQUEST:
+${userPrompt}
+
+AVAILABLE FILES (Code Skeletons):
+${skeletonsSection}
+
+TASK:
+Analyze each file's structure and select the files that need modification to fulfill the user's request.
+
+SELECTION CRITERIA:
+1. Does the file contain functions/components mentioned in the request?
+2. Does the file handle the feature being modified?
+3. Would modifying this file directly address the user's request?
+
+CRITICAL OUTPUT RULES:
+- Output ONLY file paths, one per line
+- Use the EXACT path format: /home/user/project/...
+- NO explanations, NO numbering, NO bullets, NO markdown
+- If uncertain, select 1-3 most relevant files
+
+EXAMPLE OUTPUT:
+/home/user/project/src/components/screens/InboxPage.tsx
+/home/user/project/src/hooks/useSearch.tsx
+
+YOUR OUTPUT (file paths only):`;
+
+  console.log('\nSending skeletons to LLM for analysis...');
+  
+  const { text } = await generateText({
+    model: gemini,
+    prompt: llmPrompt,
+    maxOutputTokens: 500,
+  });
+
+  console.log('\n--- RAW LLM RESPONSE ---');
+  console.log(text);
+  console.log('--- END RESPONSE ---\n');
+
+  // FIX: More flexible and robust parsing
+  const lines = text.trim().split('\n');
+  const selectedFiles: string[] = [];
+
+  for (const line of lines) {
+    let trimmed = line.trim();
+
+    // Skip empty lines
+    if (!trimmed) continue;
+
+    // Skip common markdown/formatting prefixes
+    if (trimmed.startsWith('#') || trimmed.startsWith('**')) continue;
+
+    // Remove bullets, numbers, and list markers
+    trimmed = trimmed.replace(/^[-*•\d.)\]]+\s*/, '');
+
+    // Remove markdown code backticks
+    trimmed = trimmed.replace(/^`+|`+$/g, '');
+
+    // Remove quotes
+    trimmed = trimmed.replace(/^["']|["']$/g, '');
+
+    trimmed = trimmed.trim();
+
+    // Must contain a path separator and have a valid extension
+    const hasPathSeparator = trimmed.includes('/');
+    const hasValidExtension = /\.(tsx?|jsx?|py|java|go|rs|cpp|c|h|vue|svelte)$/i.test(trimmed);
+
+    if (!hasPathSeparator || !hasValidExtension) continue;
+
+    // Extract file path (handle both absolute and relative)
+    let filePath = trimmed;
+
+    // If relative path, convert to absolute
+    if (!filePath.startsWith('/')) {
+      // Remove 'src/' prefix duplication if present
+      if (filePath.startsWith('src/') && repoPath.endsWith('/project')) {
+        filePath = `${repoPath}/${filePath}`;
+      } else {
+        filePath = `${repoPath}/${filePath}`;
+      }
+    }
+
+    // Validate it's within the project directory
+    if (filePath.startsWith('/home/user/project/')) {
+      // Avoid duplicates
+      if (!selectedFiles.includes(filePath)) {
+        selectedFiles.push(filePath);
+      }
+    }
+  }
+
+  console.log(`\nLLM Selected ${selectedFiles.length} file(s):`);
+  if (selectedFiles.length > 0) {
+    selectedFiles.forEach((file, index) => {
+      console.log(`  ${index + 1}. ${file}`);
+    });
+  } else {
+    console.warn('\n⚠️  WARNING: LLM selected 0 files from code skeletons!');
+    console.warn('Available files in skeletons:');
+    let count = 0;
+    for (const [path] of skeletons) {
+      console.warn(`  ${count + 1}. ${path}`);
+      count++;
+      if (count >= 5) {
+        console.warn(`  ... and ${skeletons.size - count} more`);
+        break;
+      }
+    }
+    console.warn('\nPossible reasons:');
+    console.warn('1. LLM output format doesn\'t match expected format');
+    console.warn('2. No files are relevant to the user request');
+    console.warn('3. Parsing logic needs adjustment');
+    console.warn('\n💡 Fallback will use hybrid search ranking instead\n');
+  }
+
+  return selectedFiles;
+}
+
+  /**
    * Generate code changes using AI
    * Extracted from worker.ts lines 98-120
    */
@@ -215,9 +352,19 @@ export class AIService {
     relevantFiles: string[],
     allFiles: string[],
     keywords: string[],
-    packageManager: string = 'npm'
+    packageManager: string = 'npm',
+    skeletons?: Map<string, string>  // Optional code skeletons for context
   ): Promise<GenerateOutput> {
-    const prompt = this.buildPrompt(repoUrl, task, fileContents, relevantFiles, allFiles, keywords, packageManager);
+    const prompt = this.buildPrompt(
+      repoUrl,
+      task,
+      fileContents,
+      relevantFiles,
+      allFiles,
+      keywords,
+      packageManager,
+      skeletons
+    );
 
     console.log('Calling generateObject with schema...');
     const startTime = Date.now();
@@ -241,7 +388,7 @@ export class AIService {
   }
 
   /**
-   * Build prompt for AI code generation
+   * Build enhanced prompt for AI code generation with code skeleton context
    * Extracted from worker.ts lines 173-251
    */
   private buildPrompt(
@@ -251,17 +398,31 @@ export class AIService {
     candidateFiles: string[],
     allFiles: string[],
     keywords: string[],
-    packageManager: string
+    packageManager: string,
+    skeletons?: Map<string, string>
   ): string {
+    // Build full content section for files to modify
     let filesToModifySection = '';
     fileContents.forEach((content, path) => {
       filesToModifySection += `\n=== FILE: ${path} ===\n\`\`\`\n${content}\n\`\`\`\n\n`;
     });
 
+    // Build context section with code skeletons (for related files)
+    let contextSection = '';
+    if (skeletons && skeletons.size > 0) {
+      contextSection = '\n=== CONTEXT: Related Files (Code Skeletons) ===\n';
+      contextSection += 'These are structural summaries of related files to help you understand the codebase:\n\n';
+
+      skeletons.forEach((skeleton, path) => {
+        // Only include skeletons for files NOT in filesToModify
+        if (!fileContents.has(path)) {
+          contextSection += `${skeleton}\n\n`;
+        }
+      });
+    }
+
     const candidatesList = candidateFiles.map((f, i) => `  ${i + 1}. ${f}`).join('\n');
     const fileTreeSection = allFiles.slice(0, 100).join('\n');
-
-    // Package manager specific instructions
     const packageManagerInstructions = this.getPackageManagerInstructions(packageManager);
 
     return `You are an expert software developer modifying an existing codebase.
@@ -271,39 +432,88 @@ USER REQUEST: ${task}
 SEARCH KEYWORDS: ${keywords.join(', ')}
 PACKAGE MANAGER: ${packageManager}
 
-=== FILES TO MODIFY ===
+=== FILES TO MODIFY (Full Content) ===
+These are the files you MUST modify. Read their complete code below:
 ${filesToModifySection}
-
+${contextSection}
 === CANDIDATE FILES ANALYZED ===
+These files were analyzed for relevance:
 ${candidatesList}
 
 === FULL PROJECT STRUCTURE (first 100 files) ===
 ${fileTreeSection}
 
-CRITICAL INSTRUCTIONS:
-1. **Modify ALL files shown in "FILES TO MODIFY" section**
-2. Make MINIMAL, surgical changes - only modify what's needed
-3. Preserve existing code style and patterns
-4. Ensure changes are consistent across all files
-5. Use absolute paths starting with: /home/user/project/...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CRITICAL INSTRUCTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-OUTPUT REQUIREMENTS:
-- **fileOperations**: Array of operations (one or more per file)
+1. **Modify ALL files shown in "FILES TO MODIFY" section**
+   - You must generate operations for EVERY file listed above
+   - If a file doesn't need changes, explain why in the explanation field
+
+2. **Make MINIMAL, surgical changes**
+   - Only modify what's necessary to fulfill the user's request
+   - Preserve existing code structure, style, and patterns
+   - Don't refactor unrelated code
+
+3. **Use the CONTEXT section wisely**
+   - Code skeletons show structure of related files (functions, classes, imports)
+   - Use this to understand dependencies and relationships
+   - Do NOT modify files in the context section
+
+4. **Ensure consistency**
+   - Changes across multiple files should follow the same pattern
+   - Maintain consistent naming conventions and style
+   - If modifying interfaces/types, update all usages
+
+5. **Path requirements**
+   - Use absolute paths starting with: /home/user/project/...
+   - Match paths exactly as shown in "FILES TO MODIFY" section
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+OUTPUT REQUIREMENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Return a JSON object with three fields:
+
+**fileOperations**: Array of operations (one or more per file)
   - type: Choose based on scope of changes:
     * 'updateFile' - For small, targeted changes (< 50% of file)
+      → Use search/replace patterns for surgical modifications
     * 'rewriteFile' - For major refactoring (> 50% of file)
+      → Provide complete file content
     * 'createFile' - Only for entirely new files
+      → Provide complete file content
+  
   - path: Absolute path (e.g., /home/user/project/src/components/Button.tsx)
-  - content: (for createFile/rewriteFile) Complete, valid code
-  - searchReplace: (for updateFile) Array of {search: string, replace: string} patterns
+  
+  - content: (for createFile/rewriteFile only)
+    → Complete, valid, runnable code
+    → Include all imports, exports, and necessary code
+  
+  - searchReplace: (for updateFile only)
+    → Array of {search: string, replace: string} patterns
+    → Each search string must be EXACT match from original file
+    → Be specific - include surrounding context to avoid wrong matches
 
-- **shellCommands**: Array of commands (ONLY if absolutely necessary)
+**shellCommands**: Array of commands (ONLY if absolutely necessary)
   ${packageManagerInstructions}
+  - Use ONLY when new dependencies are required
   - Default: [] (empty array if no commands needed)
+  - Examples:
+    * Adding a dependency: ["${packageManager} install package-name"]
+    * Running migrations: ["${packageManager} run migrate"]
 
-- **explanation**: Brief explanation of what changed and why
+**explanation**: Brief explanation (2-3 sentences)
+  - What changed and why
+  - How it fulfills the user's request
+  - Any important considerations or trade-offs
 
-EXAMPLE OUTPUT FOR MULTIPLE FILES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EXAMPLES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Example 1: Small targeted changes (updateFile)
 \`\`\`json
 {
   "fileOperations": [
@@ -312,8 +522,8 @@ EXAMPLE OUTPUT FOR MULTIPLE FILES:
       "path": "/home/user/project/helper.py",
       "searchReplace": [
         {
-          "search": "def add(a, b):",
-          "replace": "# Adds two numbers\\ndef add(a, b):"
+          "search": "def add(a, b):\\n    return a + b",
+          "replace": "def add(a, b):\\n    \\"\\"\\"Add two numbers together.\\"\\"\\"\\n    return a + b"
         }
       ]
     },
@@ -323,25 +533,63 @@ EXAMPLE OUTPUT FOR MULTIPLE FILES:
       "searchReplace": [
         {
           "search": "def main():",
-          "replace": "# Main entry point\\ndef main():"
+          "replace": "def main():\\n    \\"\\"\\"Main entry point of the application.\\"\\"\\""
         }
       ]
     }
   ],
   "shellCommands": [],
-  "explanation": "Added comments to all Python functions across helper.py and main.py"
+  "explanation": "Added docstrings to all Python functions in helper.py and main.py to improve code documentation."
 }
 \`\`\`
 
-Remember: You must generate operations for ALL files in the "FILES TO MODIFY" section!`;
+Example 2: Major refactoring (rewriteFile)
+\`\`\`json
+{
+  "fileOperations": [
+    {
+      "type": "rewriteFile",
+      "path": "/home/user/project/src/auth.ts",
+      "content": "import bcrypt from 'bcrypt';\\nimport jwt from 'jsonwebtoken';\\n\\nexport class AuthService {\\n  async hashPassword(password: string): Promise<string> {\\n    return bcrypt.hash(password, 10);\\n  }\\n\\n  async verifyPassword(password: string, hash: string): Promise<boolean> {\\n    return bcrypt.compare(password, hash);\\n  }\\n\\n  generateToken(userId: string): string {\\n    return jwt.sign({ userId }, process.env.JWT_SECRET!, { expiresIn: '7d' });\\n  }\\n}"
+    }
+  ],
+  "shellCommands": ["npm install bcrypt jsonwebtoken"],
+  "explanation": "Completely rewrote auth.ts to use industry-standard bcrypt for password hashing and JWT for authentication tokens."
+}
+\`\`\`
+
+Example 3: Creating new file
+\`\`\`json
+{
+  "fileOperations": [
+    {
+      "type": "createFile",
+      "path": "/home/user/project/src/config/database.ts",
+      "content": "export const databaseConfig = {\\n  host: process.env.DB_HOST || 'localhost',\\n  port: parseInt(process.env.DB_PORT || '5432'),\\n  database: process.env.DB_NAME || 'myapp',\\n  username: process.env.DB_USER || 'postgres',\\n  password: process.env.DB_PASSWORD\\n};"
+    }
+  ],
+  "shellCommands": [],
+  "explanation": "Created new database configuration file to centralize database connection settings."
+}
+\`\`\`
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Remember: 
+- You MUST generate operations for ALL files in "FILES TO MODIFY" section
+- Use code skeletons in CONTEXT section to understand relationships, but don't modify those files
+- Be surgical - only change what's necessary
+- Ensure all changes work together cohesively`;
   }
 
   /**
    * Get package manager specific instructions for AI
    */
   private getPackageManagerInstructions(packageManager: string): string {
+    const defaultInstruction = '- Example: ["npm install lodash"] for adding dependencies';
+    
     const instructions: Record<string, string> = {
-      'npm': '- Example: ["npm install lodash"] for adding dependencies',
+      'npm': defaultInstruction,
       'pnpm': '- IMPORTANT: Use "pnpm add <package>" NOT "npm install".\n  - Example: ["pnpm add lodash"]',
       'yarn': '- IMPORTANT: Use "yarn add <package>" NOT "npm install".\n  - Example: ["yarn add lodash"]',
       'pip': '- IMPORTANT: Use "pip install <package>" for Python dependencies.\n  - Example: ["pip install requests"]',
@@ -350,6 +598,6 @@ Remember: You must generate operations for ALL files in the "FILES TO MODIFY" se
       'bundler': '- IMPORTANT: Use "bundle add <gem>" for Ruby dependencies.\n  - Example: ["bundle add rails"]',
     };
 
-    return instructions[packageManager] || instructions['npm'];
+    return instructions[packageManager] || defaultInstruction;
   }
 }

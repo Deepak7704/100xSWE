@@ -133,18 +133,48 @@ export class HybridSearchService {
   }
 
   /**
-   * Reciprocal Rank Fusion (RRF)
+   * Reciprocal Rank Fusion (RRF) with Adaptive Weighting
    *
-   * Formula: score(d) = sum( 1 / (k + rank(d)) )
+   * Formula: score(d) = w1 * (1 / (k + rank_bm25)) + w2 * (1 / (k + rank_vector))
    *
-   * More robust than weighted average for combining rankings.
-   * Handles cases where one system returns no results gracefully.
+   * Adaptive weighting: When BM25 has high confidence (clear winner), trust it more.
+   * This prevents vector search from diluting strong keyword matches.
    */
   private reciprocalRankFusion(
     bm25Results: Array<{ documentId: string; score: number; rank: number; metadata: any }>,
     vectorResults: Array<{ id: string; score: number; metadata: any }>
   ): SearchResult[] {
-    console.log('Using Reciprocal Rank Fusion (RRF)\n');
+    console.log('Using Adaptive Reciprocal Rank Fusion (RRF)\n');
+
+    // Calculate BM25 confidence: ratio of top score to second score
+    let bm25Weight = 1.0;
+    let vectorWeight = 1.0;
+
+    if (bm25Results.length >= 2) {
+      const topBM25 = bm25Results[0].score;
+      const secondBM25 = bm25Results[1].score;
+      const confidenceRatio = topBM25 / (secondBM25 + 0.1); // Avoid division by zero
+
+      console.log(`BM25 Confidence Analysis:`);
+      console.log(`  Top score: ${topBM25.toFixed(2)}`);
+      console.log(`  Second score: ${secondBM25.toFixed(2)}`);
+      console.log(`  Confidence ratio: ${confidenceRatio.toFixed(2)}x\n`);
+
+      // If BM25 has very high confidence (top score >> second score), trust it more
+      if (confidenceRatio > 2.0) {
+        bm25Weight = 4.0;  // 4x weight for BM25
+        vectorWeight = 0.5; // Reduce vector influence
+        console.log(`✓ High BM25 confidence detected (${confidenceRatio.toFixed(2)}x)`);
+        console.log(`  Applying adaptive weighting: BM25=${bm25Weight}x, Vector=${vectorWeight}x\n`);
+      } else if (confidenceRatio > 1.5) {
+        bm25Weight = 3.0;  // 3x weight for BM25
+        vectorWeight = 0.8; // Slightly reduce vector
+        console.log(`✓ Moderate BM25 confidence detected (${confidenceRatio.toFixed(2)}x)`);
+        console.log(`  Applying adaptive weighting: BM25=${bm25Weight}x, Vector=${vectorWeight}x\n`);
+      } else {
+        console.log(`✓ Normal confidence - using balanced RRF (1:1 weighting)\n`);
+      }
+    }
 
     // Create lookup maps
     const bm25Map = new Map(
@@ -160,16 +190,26 @@ export class HybridSearchService {
       ...vectorResults.map(r => r.id)
     ]);
 
-    // Calculate RRF score for each chunk
+    // Calculate weighted RRF score for each chunk
     const scoredResults: SearchResult[] = [];
+
+    // Get the top BM25 result ID for bonus boost
+    const topBM25Id = bm25Results.length > 0 ? bm25Results[0].documentId : null;
 
     for (const chunkId of allChunkIds) {
       const bm25Result = bm25Map.get(chunkId);
       const vectorResult = vectorMap.get(chunkId);
 
-      // RRF formula: 1 / (k + rank)
-      const bm25RRF = bm25Result ? 1 / (this.RRF_K + bm25Result.rank) : 0;
-      const vectorRRF = vectorResult ? 1 / (this.RRF_K + vectorResult.rank) : 0;
+      // Weighted RRF formula: w1 / (k + rank1) + w2 / (k + rank2)
+      let bm25RRF = bm25Result ? (bm25Weight / (this.RRF_K + bm25Result.rank)) : 0;
+      const vectorRRF = vectorResult ? (vectorWeight / (this.RRF_K + vectorResult.rank)) : 0;
+
+      // If this is the top BM25 result AND confidence is high, give it an extra boost
+      if (chunkId === topBM25Id && bm25Weight > 1.0) {
+        const boost = 0.015; // Significant boost to overcome vector ranking
+        bm25RRF += boost;
+        console.log(`  ⚡ Applying top BM25 boost (+${boost}) to: ${bm25Map.get(chunkId)?.metadata?.filePath || chunkId}`);
+      }
 
       const totalScore = bm25RRF + vectorRRF;
 
