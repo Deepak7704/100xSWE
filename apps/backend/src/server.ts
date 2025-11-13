@@ -6,6 +6,7 @@ import cors from 'cors';
 import { createQueue, QUEUE_NAMES, connection } from '@openswe/shared/queues';
 import webhookRoute from '../routes/webhook';
 import installationRoute from '../routes/installation';
+import authRoute from '../routes/auth.routes';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -160,6 +161,10 @@ app.use('/webhook', webhookRoute);
 // This handles GitHub App installation events
 app.use('/installation', installationRoute);
 
+// Mount auth route
+// This handles OAuth authentication (login, callback, logout)
+app.use('/auth', authRoute);
+
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('Error:', err);
   res.status(500).json({
@@ -177,6 +182,11 @@ app.listen(PORT, () => {
   console.log(`GET /webhook/health - Webhook health check`);
   console.log(`POST /installation - GitHub App installation webhook`);
   console.log(`GET /installation/list - List all installations`);
+  console.log(`GET /auth/github/login - Initiate GitHub OAuth`);
+  console.log(`GET /auth/github/callback - GitHub OAuth callback`);
+  console.log(`GET /auth/me - Get current user`);
+  console.log(`POST /auth/logout - Logout`);
+  console.log(`POST /auth/refresh - Refresh JWT token`);
   console.log(`GET /health - Health check\n`);
   console.log(`CORS enabled for: ${FRONTEND_URL}`);
   console.log(`Queue: Redis on ${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`);

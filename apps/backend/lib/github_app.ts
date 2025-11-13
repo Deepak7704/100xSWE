@@ -1,164 +1,108 @@
-import crypto from 'crypto';
-import jwt from 'jsonwebtoken';
+import { App } from '@octokit/app';
 
-interface GitHubAppConfig {
-  appId: string;
-  privateKey: string;
-  webhookSecret: string;
+// Validate environment variables
+const GITHUB_APP_ID = process.env.GITHUB_APP_ID;
+const GITHUB_APP_PRIVATE_KEY = process.env.GITHUB_APP_PRIVATE_KEY?.replace(/\\n/g, '\n');
+const GITHUB_WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET;
+
+if (!GITHUB_APP_ID || !GITHUB_APP_PRIVATE_KEY || !GITHUB_WEBHOOK_SECRET) {
+  throw new Error('Missing GitHub App credentials');
 }
 
-interface InstallationToken {
-  token: string;
-  expiresAt: string;
-  permissions: Record<string, string>;
-  repositorySelection: string;
-}
-
-class GitHubApp {
-  private appId: string;
-  private privateKey: string;
-  private webhookSecret: string;
-
-  constructor(config: GitHubAppConfig) {
-    this.appId = config.appId;
-    this.privateKey = config.privateKey;
-    this.webhookSecret = config.webhookSecret;
-  }
-
-  private generateJWT(): string {
-    const now = Math.floor(Date.now() / 1000);
-
-    const payload = {
-      iat: now - 60,
-      exp: now + (10 * 60),
-      iss: this.appId,
-    };
-
-    return jwt.sign(payload, this.privateKey, { algorithm: 'RS256' });
-  }
-
-  async getInstallationToken(installationId: number): Promise<string> {
-    const appJWT = this.generateJWT();
-
-    console.log(`[GitHub App] Generating token for installation ${installationId}`);
-
-    const response = await fetch(
-      `https://api.github.com/app/installations/${installationId}/access_tokens`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${appJWT}`,
-          'Accept': 'application/vnd.github+json',
-          'X-GitHub-Api-Version': '2022-11-28',
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.text();
-      console.error(`[GitHub App] Failed to get token:`, error);
-      throw new Error(`Failed to get installation token: ${response.statusText}`);
-    }
-
-    const data = await response.json() as InstallationToken;
-
-    console.log(`[GitHub App] Token generated (expires: ${data.expiresAt})`);
-
-    return data.token;
-  }
-
-  verifyWebhookSignature(payload: Buffer, signature: string): boolean {
-    if (!signature) return false;
-
-    const hmac = crypto.createHmac('sha256', this.webhookSecret);
-    const digest = 'sha256=' + hmac.update(payload).digest('hex');
-
-    try {
-      return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(signature));
-    } catch {
-      return false;
-    }
-  }
-
-  async getInstallationClient(installationId: number) {
-    const token = await this.getInstallationToken(installationId);
-
-    return {
-      token,
-
-      async createPullRequest(owner: string, repo: string, params: {
-        title: string;
-        body: string;
-        head: string;
-        base: string;
-      }) {
-        const response = await fetch(
-          `https://api.github.com/repos/${owner}/${repo}/pulls`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Accept': 'application/vnd.github+json',
-              'X-GitHub-Api-Version': '2022-11-28',
-            },
-            body: JSON.stringify(params),
-          }
-        );
-
-        if (!response.ok) {
-          const error = await response.text();
-          throw new Error(`Failed to create PR: ${error}`);
-        }
-
-        return await response.json();
-      },
-
-      async getRepository(owner: string, repo: string) {
-        const response = await fetch(
-          `https://api.github.com/repos/${owner}/${repo}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Accept': 'application/vnd.github+json',
-              'X-GitHub-Api-Version': '2022-11-28',
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch repository: ${response.statusText}`);
-        }
-
-        return await response.json();
-      },
-
-      async getContents(owner: string, repo: string, path: string, ref?: string) {
-        const url = new URL(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`);
-        if (ref) url.searchParams.set('ref', ref);
-
-        const response = await fetch(url.toString(), {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28',
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to get contents: ${response.statusText}`);
-        }
-
-        return await response.json();
-      },
-    };
-  }
-}
-
-const githubApp = new GitHubApp({
-  appId: process.env.GITHUB_APP_ID || '',
-  privateKey: process.env.GITHUB_APP_PRIVATE_KEY?.replace(/\\n/g, '\n') || '',
-  webhookSecret: process.env.GITHUB_WEBHOOK_SECRET || '',
+// Initialize GitHub App with Octokit
+const app = new App({
+  appId: GITHUB_APP_ID,
+  privateKey: GITHUB_APP_PRIVATE_KEY,
+  webhooks: {
+    secret: GITHUB_WEBHOOK_SECRET,
+  },
 });
 
-export default githubApp;
-export { GitHubApp };
+// Get authenticated Octokit instance for installation
+export async function getInstallationOctokit(installationId: number) {
+  console.log(`[GitHub App] Authenticating installation ${installationId}`);
+
+  try {
+    const octokit = await app.getInstallationOctokit(installationId);
+    console.log(`[GitHub App] Authenticated installation ${installationId}`);
+    return octokit;
+  } catch (error: any) {
+    console.error(`[GitHub App] Auth failed:`, error.message);
+    throw new Error(`Failed to authenticate installation: ${error.message}`);
+  }
+}
+
+// Get raw installation token (for git clone, etc.)
+export async function getInstallationToken(installationId: number): Promise<string> {
+  console.log(`[GitHub App] Generating token for installation ${installationId}`);
+
+  try {
+    const octokit = await app.getInstallationOctokit(installationId);
+    const { token } = await octokit.auth({ type: 'installation' }) as { token: string };
+    console.log(`[GitHub App] Token generated for installation ${installationId}`);
+    return token;
+  } catch (error: any) {
+    console.error(`[GitHub App] Token generation failed:`, error.message);
+    throw new Error(`Failed to generate token: ${error.message}`);
+  }
+}
+
+// Verify webhook signature
+export async function verifyWebhookSignature(payload: Buffer | string, signature: string): Promise<boolean> {
+  if (!signature) return false;
+
+  try {
+    const payloadString = Buffer.isBuffer(payload) ? payload.toString('utf8') : payload;
+    return await app.webhooks.verify(payloadString, signature);
+  } catch (error) {
+    console.error('[GitHub App] Signature verification failed');
+    return false;
+  }
+}
+
+// Helper: Get repository details
+export async function getRepository(installationId: number, owner: string, repo: string) {
+  const octokit = await getInstallationOctokit(installationId);
+  const { data } = await (octokit as any).rest.repos.get({ owner, repo });
+  return data;
+}
+
+// Helper: Create pull request
+export async function createPullRequest(
+  installationId: number,
+  owner: string,
+  repo: string,
+  params: { title: string; body: string; head: string; base: string }
+) {
+  const octokit = await getInstallationOctokit(installationId);
+  console.log(`[GitHub App] Creating PR: ${params.title}`);
+
+  const { data } = await (octokit as any).rest.pulls.create({
+    owner,
+    repo,
+    ...params,
+  });
+
+  console.log(`[GitHub App] PR created: #${data.number}`);
+  return data;
+}
+
+// Helper: Get file contents
+export async function getContents(
+  installationId: number,
+  owner: string,
+  repo: string,
+  path: string,
+  ref?: string
+) {
+  const octokit = await getInstallationOctokit(installationId);
+  const { data } = await (octokit as any).rest.repos.getContent({
+    owner,
+    repo,
+    path,
+    ...(ref && { ref }),
+  });
+  return data;
+}
+
+export default app;

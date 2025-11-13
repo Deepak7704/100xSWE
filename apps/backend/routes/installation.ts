@@ -1,5 +1,5 @@
 import { Router } from "express";
-import githubApp from '../lib/github_app';
+import { verifyWebhookSignature } from '../lib/github_app';
 
 const router = Router();
 interface Installation{
@@ -27,7 +27,7 @@ router.post('/',async(req,res)=>{
         const body = req.body;
         const rawBody = (req as any).rawBody as Buffer;
          console.log(`\n[Installation] ${event} | Delivery: ${deliveryId}`);
-        if(!githubApp.verifyWebhookSignature(rawBody,signature)){
+        if(!await verifyWebhookSignature(rawBody,signature)){
             console.error('Invalid signature');
             return res.status(403).json({error:'Invalid signature'});
         }

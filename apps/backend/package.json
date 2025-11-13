@@ -22,8 +22,13 @@
   "dependencies": {
     "@e2b/code-interpreter": "^2.1.0",
     "@google/generative-ai": "^0.24.1",
+    "@octokit/app": "^16.1.2",
+    "@octokit/auth-app": "^8.1.2",
+    "@octokit/rest": "^22.0.1",
+    "@octokit/webhooks": "^14.1.3",
     "@openswe/shared": "workspace:*",
     "@types/jsonwebtoken": "^9.0.10",
+    "axios": "^1.13.2",
     "cors": "^2.8.5",
     "crypto": "^1.0.1",
     "dotenv": "^17.2.3",

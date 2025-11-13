@@ -1,32 +1,11 @@
 import { Router } from 'express';
-import crypto from 'crypto';
 import { indexingQueue, chatQueue } from '../src/server';
 import { connection } from '@openswe/shared/queues';
-import { getInstallationForRepo } from './installation';
-import githubApp from '../lib/github_app';
-const WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET;
-if(!WEBHOOK_SECRET){
-  throw new Error('WEBHOOK MUST BE SET');
-}
-const INCREMENTAL_THRESHOLD =
-parseInt(process.env.INCREMENTAL_THRESHOLD || '100');
+import { getInstallationForRepo, installations, repoToInstallation } from './installation';
+import { getInstallationToken, verifyWebhookSignature } from '../lib/github_app';
+
+const INCREMENTAL_THRESHOLD = parseInt(process.env.INCREMENTAL_THRESHOLD || '100');
 const router = Router();
-
-  // Verify webhook signature using HMAC-SHA256
-  function verifySignature(payload: Buffer, signature: string): boolean
-  {
-    if (!signature) return false;
-
-    const hmac = crypto.createHmac('sha256', WEBHOOK_SECRET!);
-    const digest = 'sha256=' + hmac.update(payload).digest('hex');
-
-    try {
-      return crypto.timingSafeEqual(Buffer.from(digest),
-  Buffer.from(signature));
-    } catch {
-      return false;
-    }
-  }
 
   // Extract and deduplicate changed files from all commits using set ds
   function extractChangedFiles(commits: any[]) {
@@ -99,8 +78,8 @@ const router = Router();
 
       console.log(`\n[Webhook] ${event} | Delivery: ${deliveryId}`);
 
-      // Verify request is from GitHub
-      if (!verifySignature(rawBody, signature)) {
+      // Verify request is from GitHub using Octokit
+      if (!await verifyWebhookSignature(rawBody, signature)) {
         console.error('[Webhook] Invalid signature');
         return res.status(403).json({ error: 'Invalid signature' });
       }
@@ -128,10 +107,10 @@ const router = Router();
         });
       }
 
-      // Generate installation token (valid for 1 hour)
+      // Generate installation token (valid for 1 hour) using Octokit
       let installationToken: string;
       try {
-        installationToken = await githubApp.getInstallationToken(installationId);
+        installationToken = await getInstallationToken(installationId);
         console.log(`[Webhook] Token generated for installation ${installationId}`);
       } catch (error: any) {
         console.error(`[Webhook] Failed to get token:`, error.message);

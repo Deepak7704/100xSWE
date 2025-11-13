@@ -2,8 +2,9 @@
   "extends": "@openswe/typescript-config/bun.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "."
+    "rootDir": ".",
+    "typeRoots": ["./node_modules/@types", "./types"]
   },
-  "include": ["src/**/*", "routes/**/*"],
+  "include": ["src/**/*", "routes/**/*","middleware/**/*","lib/**/*","types/**/*"],
   "exclude": ["node_modules", "dist"]
 }

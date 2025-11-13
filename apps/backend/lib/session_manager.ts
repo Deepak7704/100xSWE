@@ -16,11 +16,14 @@ interface SessionData{
     username : string;
     email : string;
     githubAccessToken : string;
+    name : string | null;
+    avatar : string;
+    profileUrl : string;
 }
 interface Session extends SessionData{
     sessionId : string; //unique session identifier
     createdAt : number;
-    expiresAt : number;
+    expiredAt : number;
 }
 
 // a helper fn that helps to generates cryptographically secure random session id 
@@ -32,12 +35,12 @@ function generateSessionId():string{
 export async function createSession(data:SessionData):Promise<string>{
     const sessionId = generateSessionId();
     const now = Date.now();//gets the current time stamp
-    const expiresAt = now + SESSION_EXPIRE_MS;
+    const expiredAt = now + SESSION_EXPIRE_MS;
     const session : Session = {
         ...data,//copy userId,uname,email and add sessid,timestamps,githubaccess token
         sessionId,
         createdAt:now,
-        expiresAt
+        expiredAt
     }
     //format => "session:sess_abakldklj3i489273"
     const redisKey = `${SESSION_PREFIX}${sessionId}`;
@@ -104,7 +107,7 @@ export async function verifySession(sessionId:string):Promise<Session>{
         throw new Error('Session not found or expired');
     }
     const now = Date.now();
-    if(now > session.expiresAt){
+    if(now > session.expiredAt){
         await deleteSession(sessionId);
         throw new Error('Session expired');
     }
@@ -120,7 +123,7 @@ export async function cleanupExpiredSessions():Promise<number>{
             const sessionJson = await connection.get(key);
             if(sessionJson){
                 const session = JSON.parse(sessionJson) as Session;
-                if(now > session.expiresAt){
+                if(now > session.expiredAt){
                     await connection.del(key);
                     cleanedCount++;
                 }
