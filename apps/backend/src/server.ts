@@ -85,13 +85,10 @@ const globalLimiter = rateLimit({
 });
 
 // Strict limiter for expensive operations (chat/job creation)
+// Uses default IP-based rate limiting (handles IPv6 correctly)
 const strictLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 20, // 20 jobs per hour per user/IP
-  keyGenerator: (req) => {
-    // Rate limit by user ID if authenticated, otherwise by IP
-    return req.user?.userId?.toString() || req.ip || 'unknown';
-  },
+  max: 20, // 20 jobs per hour per IP
   message: 'Job creation limit exceeded. Please try again later',
   standardHeaders: true,
   legacyHeaders: false,

@@ -7,7 +7,7 @@ if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
 }
 
 // Configure single Gemini model
-export const gemini = google('gemini-2.0-flash');
+export const gemini = google('gemini-2.5-flash');
 
 // Export as default for easy use
 export default gemini;
