@@ -354,7 +354,8 @@ YOUR OUTPUT (file paths only):`;
     keywords: string[],
     packageManager: string = 'npm',
     skeletons?: Map<string, string>,  // Optional code skeletons for context
-    previousErrors?: string[]  // Optional: errors from previous validation attempt
+    previousErrors?: string[],  // Optional: errors from previous validation attempt
+    newFiles?: string[]  // Optional: list of files that don't exist yet (to be created)
   ): Promise<GenerateOutput> {
     const prompt = this.buildPrompt(
       repoUrl,
@@ -365,7 +366,8 @@ YOUR OUTPUT (file paths only):`;
       keywords,
       packageManager,
       skeletons,
-      previousErrors
+      previousErrors,
+      newFiles
     );
 
     console.log('Calling generateObject with schema...');
@@ -402,13 +404,26 @@ YOUR OUTPUT (file paths only):`;
     keywords: string[],
     packageManager: string,
     skeletons?: Map<string, string>,
-    previousErrors?: string[]
+    previousErrors?: string[],
+    newFiles?: string[]
   ): string {
-    // Build full content section for files to modify
+    // Build full content section for files to modify (existing files only)
     let filesToModifySection = '';
     fileContents.forEach((content, path) => {
       filesToModifySection += `\n=== FILE: ${path} ===\n\`\`\`\n${content}\n\`\`\`\n\n`;
     });
+
+    // Build section for new files to create
+    let newFilesSection = '';
+    if (newFiles && newFiles.length > 0) {
+      newFilesSection = '\n=== NEW FILES TO CREATE ===\n';
+      newFilesSection += 'The following files do not exist yet and should be created:\n\n';
+      newFiles.forEach((path, idx) => {
+        newFilesSection += `  ${idx + 1}. ${path}\n`;
+      });
+      newFilesSection += '\nIMPORTANT: For these files, use type: "createFile" with complete file content.\n';
+      newFilesSection += 'These are NEW files - do not attempt to use "updateFile" or "rewriteFile".\n';
+    }
 
     // Build context section with code skeletons (for related files)
     let contextSection = '';
@@ -454,8 +469,9 @@ SEARCH KEYWORDS: ${keywords.join(', ')}
 PACKAGE MANAGER: ${packageManager}
 
 === FILES TO MODIFY (Full Content) ===
-These are the files you MUST modify. Read their complete code below:
+These are EXISTING files you can modify. Read their complete code below:
 ${filesToModifySection}
+${newFilesSection}
 ${contextSection}
 === CANDIDATE FILES ANALYZED ===
 These files were analyzed for relevance:

@@ -24,7 +24,11 @@ export const CodeValidationState = Annotation.Root({
 
   relevantFiles: Annotation<string[]>(),
   filesToModify: Annotation<string[]>(),
-  fileContents: Annotation<Map<string, string>>(),
+  fileContents: Annotation<Map<string, string>>(),  // Only existing files with content
+  newFiles: Annotation<string[]>({  // Files that don't exist yet (to be created)
+    reducer: (_, update) => update,
+    default: () => []
+  }),
   allFiles: Annotation<string[]>(),
   keywords: Annotation<string[]>(),
   codeSkeletons: Annotation<Map<string, string>>(),
@@ -117,7 +121,8 @@ async function generateCodeNode(
       state.keywords,
       state.packageManager,
       state.codeSkeletons,
-      previousErrors
+      previousErrors,
+      state.newFiles  // Pass list of files to be created
     );
 
     console.log('Code generation complete');

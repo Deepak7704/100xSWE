@@ -79,6 +79,7 @@ export interface EnhancedCodeGraph {
   fileToNodes: Map<string, string[]>;
   nameToNodes: Map<string, string[]>;
   functionCalls: Map<string, Set<string>>;
+  importedBy: Map<string, Set<string>>;  // target file → files that import it
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -97,7 +98,8 @@ export class EnhancedCodeGraphService {
       edges: new Map(),
       fileToNodes: new Map(),
       nameToNodes: new Map(),
-      functionCalls: new Map()
+      functionCalls: new Map(),
+      importedBy: new Map()
     };
 
     fileContents.forEach((content, filePath) => {
@@ -114,6 +116,10 @@ export class EnhancedCodeGraphService {
         console.error(`Failed to parse ${filePath}:`, (error as Error).message);
       }
     });
+
+    // Build reverse import map after all files are parsed
+    this.buildReverseImportMap(graph);
+    console.log(`Reverse import map built: ${graph.importedBy.size} entries`);
 
     console.log(`Graph built: ${graph.nodes.size} nodes`);
     return graph;
@@ -546,13 +552,13 @@ export class EnhancedCodeGraphService {
           return `"${typeNode.literal.value}"`;
         }
         if (t.isNumberLiteral(typeNode.literal)) {
-            return (typeNode.literal as t.NumericLiteral).value.toString();
+          return (typeNode.literal as t.NumericLiteral).value.toString();
         }
         if (t.isBooleanLiteral(typeNode.literal)) {
           return typeNode.literal.value ? 'true' : 'false';
         }
         if (t.isBigIntLiteral(typeNode.literal)) {
-            return `${(typeNode.literal as t.BigIntLiteral).value}n`;
+          return `${(typeNode.literal as t.BigIntLiteral).value}n`;
         }
       }
     }
@@ -567,5 +573,107 @@ export class EnhancedCodeGraphService {
       'yield', 'import', 'export', 'default', 'class', 'function'
     ];
     return keywords.includes(name);
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // REVERSE DEPENDENCY TRACKING METHODS
+  // ═════════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Build reverse import map after all files are parsed
+   * Maps: target module → Set of files that import it
+   */
+  private buildReverseImportMap(graph: EnhancedCodeGraph): void {
+    graph.edges.forEach((edgeList, sourceFile) => {
+      edgeList.forEach(edge => {
+        if (edge.type === 'imports') {
+          const importTarget = edge.target;
+
+          if (!graph.importedBy.has(importTarget)) {
+            graph.importedBy.set(importTarget, new Set());
+          }
+          graph.importedBy.get(importTarget)!.add(sourceFile);
+        }
+      });
+    });
+  }
+
+  /**
+   * Find all files that import from the given selected files
+   * This identifies "dependents" - files that would break if selected files change
+   * 
+   * @param graph - The code graph with importedBy map populated
+   * @param selectedFiles - Array of file paths that were selected for modification
+   * @param allParsedFiles - All files that were parsed (to limit scope to known files)
+   * @returns Array of file paths that depend on the selected files
+   */
+  findDependentFiles(
+    graph: EnhancedCodeGraph,
+    selectedFiles: string[],
+    allParsedFiles: string[]
+  ): string[] {
+    const dependents = new Set<string>();
+
+    console.log(`\nFinding dependents for ${selectedFiles.length} selected files...`);
+
+    selectedFiles.forEach(selectedFile => {
+      // Get the basename without extension for matching
+      const pathParts = selectedFile.split('/');
+      const fileName = pathParts.pop() || '';
+      const baseName = fileName.replace(/\.[^.]+$/, '');
+
+      console.log(`  Checking dependents for: ${selectedFile} (baseName: ${baseName})`);
+
+      // Method 1: Check all edges for imports that match this file
+      graph.edges.forEach((edgeList, sourceFile) => {
+        // Skip if source is already in selected files
+        if (selectedFiles.includes(sourceFile)) return;
+
+        edgeList.forEach(edge => {
+          if (edge.type === 'imports') {
+            const importPath = edge.target;
+
+            // Match various import patterns
+            const isMatch =
+              // Direct match on basename (e.g., "./rateLimiter" matches "rateLimiter.ts")
+              importPath.endsWith(baseName) ||
+              // Match with extension stripped from import
+              importPath.replace(/\.[^.]+$/, '').endsWith(baseName) ||
+              // Match relative path patterns
+              selectedFile.includes(importPath.replace(/^\.\.?\//, '').replace(/^@\//, ''));
+
+            if (isMatch) {
+              console.log(`    Found dependent: ${sourceFile} (imports "${importPath}")`);
+              dependents.add(sourceFile);
+            }
+          }
+        });
+      });
+
+      // Method 2: Check the importedBy map for direct matches
+      graph.importedBy.forEach((importers, target) => {
+        const targetMatches =
+          target.includes(baseName) ||
+          baseName.includes(target.replace(/^\.\.?\//, '').replace(/\.[^.]+$/, ''));
+
+        if (targetMatches) {
+          importers.forEach(importer => {
+            if (!selectedFiles.includes(importer)) {
+              console.log(`    Found dependent (from importedBy): ${importer}`);
+              dependents.add(importer);
+            }
+          });
+        }
+      });
+    });
+
+    // Filter to only include files that were actually parsed (known files)
+    const filteredDependents = Array.from(dependents).filter(dep =>
+      allParsedFiles.includes(dep)
+    );
+
+    console.log(`  Total dependents found: ${filteredDependents.length}`);
+
+    return filteredDependents;
   }
 }

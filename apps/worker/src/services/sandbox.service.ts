@@ -93,6 +93,41 @@ export class SandboxService {
   }
 
   /**
+   * Separate existing files from new files that need to be created
+   */
+  async separateExistingAndNewFiles(
+    sandbox: Sandbox,
+    filePaths: string[],
+    repoPath: string = '/home/user/project'
+  ): Promise<{ existingFiles: string[]; newFiles: string[] }> {
+    console.log(`\nChecking file existence for ${filePaths.length} file(s)...`);
+    const existingFiles: string[] = [];
+    const newFiles: string[] = [];
+
+    for (const path of filePaths) {
+      const absolutePath = path.startsWith('/')
+        ? path
+        : `${repoPath}/${path}`;
+
+      const exists = await this.fileExists(sandbox, absolutePath);
+      if (exists) {
+        existingFiles.push(path);
+        console.log(`  ✓ Exists: ${path}`);
+      } else {
+        newFiles.push(path);
+        console.log(` New file: ${path}`);
+      }
+    }
+
+    console.log(`\nSummary:`);
+    console.log(`  Existing files to modify: ${existingFiles.length}`);
+    console.log(`  New files to create: ${newFiles.length}`);
+    console.log('');
+
+    return { existingFiles, newFiles };
+  }
+
+  /**
    * Execute file operations from AI generation
    * Extracted from worker.ts lines 125-128
    */
@@ -246,6 +281,18 @@ export class SandboxService {
   }
 
   // ========== PRIVATE HELPER METHODS ==========
+
+  /**
+   * Check if file exists in sandbox
+   */
+  private async fileExists(sandbox: Sandbox, path: string): Promise<boolean> {
+    try {
+      await sandbox.files.read(path);
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
   /**
    * Read file from sandbox

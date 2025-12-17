@@ -8,11 +8,20 @@ import { Loader2, CheckCircle, XCircle } from "lucide-react";
 export default function InstallationCallback() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const { user, token, isLoading } = useAuth();
   const [status, setStatus] = useState<'checking' | 'success' | 'error'>('checking');
   const [message, setMessage] = useState('Verifying installation...');
 
   useEffect(() => {
+    // Wait for authentication to be ready
+    if (isLoading) return;
+
+    if (!user || !token) {
+      setStatus('error');
+      setMessage('Authentication failed. Please log in again.');
+      return;
+    }
+
     const verifyInstallation = async () => {
       try {
         const installationId = searchParams.get("installation_id");
@@ -25,60 +34,66 @@ export default function InstallationCallback() {
           throw new Error('No installation ID received');
         }
 
-        // Wait a moment for webhook to process
-        setMessage('Processing installation...');
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        // Check if installation exists in database
         const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
-        const response = await fetch(`${backendUrl}/installation/list`);
-        const data = await response.json();
+        
+        // Polling configuration
+        const maxAttempts = 15; // 30 seconds total
+        const interval = 2000; // 2 seconds
+        let attempts = 0;
+        let verified = false;
 
-        console.log('[Installation Callback] Installations:', data);
+        while (attempts < maxAttempts && !verified) {
+          setMessage(attempts === 0 ? 'Processing installation...' : 'Still verifying...');
+          
+          try {
+            const response = await fetch(`${backendUrl}/installation/list`, {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              console.log(`[Installation Callback] Attempt ${attempts + 1}:`, data);
 
-        // Check if the installation exists
-        const installation = data.installations?.find(
-          (inst: any) => inst.installationId === parseInt(installationId)
-        );
+              const installation = data.installations?.find(
+                (inst: any) => inst.installationId === parseInt(installationId)
+              );
 
-        if (installation) {
-          console.log('[Installation Callback] Installation verified!', installation);
-          setStatus('success');
-          setMessage('Installation successful! Redirecting to dashboard...');
+              if (installation) {
+                console.log('[Installation Callback] Installation verified!', installation);
+                setStatus('success');
+                setMessage('Installation successful! Redirecting to dashboard...');
+                verified = true;
+                
+                // Redirect to dashboard after short delay
+                setTimeout(() => {
+                  router.push('/dashboard');
+                }, 1500);
+                return;
+              }
+            }
+          } catch (err) {
+            console.warn(`[Installation Callback] Attempt ${attempts + 1} failed:`, err);
+          }
 
-          // Redirect to dashboard after short delay
-          setTimeout(() => {
-            router.push('/dashboard');
-          }, 1500);
-        } else {
-          // Installation might not be in DB yet, wait and retry
-          console.log('[Installation Callback] Installation not found yet, retrying...');
-          setMessage('Finalizing setup...');
-
-          await new Promise(resolve => setTimeout(resolve, 5000));
-
-          // Retry check
-          const retryResponse = await fetch(`${backendUrl}/installation/list`);
-          const retryData = await retryResponse.json();
-
-          const retryInstallation = retryData.installations?.find(
-            (inst: any) => inst.installationId === parseInt(installationId)
-          );
-
-          if (retryInstallation) {
-            setStatus('success');
-            setMessage('Installation successful! Redirecting to dashboard...');
-            setTimeout(() => router.push('/dashboard'), 1500);
-          } else {
-            throw new Error('Installation not found. Please try again.');
+          // Wait before next attempt if not verified
+          if (!verified) {
+            await new Promise(resolve => setTimeout(resolve, interval));
+            attempts++;
           }
         }
+
+        if (!verified) {
+          throw new Error('Installation verification timed out. It may still be processing.');
+        }
+
       } catch (error: any) {
         console.error('[Installation Callback] Error:', error);
         setStatus('error');
         setMessage(error.message || 'Failed to verify installation');
 
-        // Redirect to dashboard anyway after 3 seconds
+        // Redirect to dashboard anyway after 5 seconds
         setTimeout(() => {
           router.push('/dashboard');
         }, 5000);
@@ -86,7 +101,7 @@ export default function InstallationCallback() {
     };
 
     verifyInstallation();
-  }, [searchParams, router, user]);
+  }, [searchParams, router, user, token, isLoading]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">

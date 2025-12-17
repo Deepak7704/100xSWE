@@ -101,24 +101,69 @@ export class JobProcessor {
       const graphService = new EnhancedCodeGraphService();
       const codeSkeletonService = new CodeSkeletonService();
 
-      const candidateContents = await this.sandboxService.getFileContents(sandbox,relevantFiles,Infinity,repoPath);
+      const candidateContents = await this.sandboxService.getFileContents(sandbox, relevantFiles, Infinity, repoPath);
       //Build code graph
       const codeGraph = graphService.buildGraph(candidateContents);
       console.log(`code graph build for the above candidate files ${codeGraph.nodes.size} nodes extracted`);
 
+      // Step 4.6: Find files that DEPEND on candidate files (reverse dependencies)
+      console.log('\nStep 4.6: Finding dependent files (files that import from candidate files)...');
+      const dependentFiles = graphService.findDependentFiles(
+        codeGraph,
+        relevantFiles,
+        relevantFiles
+      );
 
-      const skeletons = new Map<string,string>();
-      relevantFiles.forEach(filePath => {
-        const skeleton = codeSkeletonService.generateSkeleton(codeGraph,filePath);
-        const formatted = codeSkeletonService.formatSkeletonForLLM(skeleton);
-        skeletons.set(filePath,formatted);
-      })
-      console.log(`Generated ${skeletons.size} code skeletons for llm analysis`);
+      // Declare skeletons map once, populate based on whether dependents exist
+      const skeletons = new Map<string, string>();
+
+      if (dependentFiles.length > 0) {
+        console.log(`Found ${dependentFiles.length} dependent files:`);
+        dependentFiles.forEach((file, idx) => {
+          console.log(`  ${idx + 1}. ${file}`);
+        });
+
+        // Read dependent file contents and add to code graph
+        const dependentContents = await this.sandboxService.getFileContents(
+          sandbox, dependentFiles, Infinity, repoPath
+        );
+
+        // Rebuild graph with dependent files included
+        const allCandidateContents = new Map([...candidateContents, ...dependentContents]);
+        const expandedCodeGraph = graphService.buildGraph(allCandidateContents);
+        console.log(`Expanded code graph: ${expandedCodeGraph.nodes.size} nodes (including dependents)`);
+
+        // Mark candidate files (primary selection)
+        relevantFiles.forEach(filePath => {
+          const skeleton = codeSkeletonService.generateSkeleton(expandedCodeGraph, filePath);
+          const formatted = codeSkeletonService.formatSkeletonForLLM(skeleton);
+          skeletons.set(filePath, `[CANDIDATE FILE]\n${formatted}`);
+        });
+
+        // Mark dependent files (may need updates if candidates change)
+        dependentFiles.forEach(filePath => {
+          const skeleton = codeSkeletonService.generateSkeleton(expandedCodeGraph, filePath);
+          const formatted = codeSkeletonService.formatSkeletonForLLM(skeleton);
+          skeletons.set(filePath, `[DEPENDENT FILE - imports from candidate files]\n${formatted}`);
+        });
+
+        console.log(`Generated ${skeletons.size} code skeletons (${relevantFiles.length} candidates + ${dependentFiles.length} dependents)`);
+      } else {
+        console.log('No dependent files found.');
+
+        // Generate skeletons for candidate files only
+        relevantFiles.forEach(filePath => {
+          const skeleton = codeSkeletonService.generateSkeleton(codeGraph, filePath);
+          const formatted = codeSkeletonService.formatSkeletonForLLM(skeleton);
+          skeletons.set(filePath, formatted);
+        });
+        console.log(`Generated ${skeletons.size} code skeletons for llm analysis`);
+      }
 
       // Step 5: Select files to modify using LLM (with fallback to hybrid search ranking)
       console.log('Step 5: Selecting files to modify...');
       const keywords = extractKeywords(task);
-      let filesToModify = await this.aiService.selectFilesToModifyWithSkeletons(task,skeletons,repoPath);
+      let filesToModify = await this.aiService.selectFilesToModifyWithSkeletons(task, skeletons, repoPath);
 
       // FALLBACK: If LLM selected 0 files, use top-ranked files from hybrid search
       if (filesToModify.length === 0) {
@@ -136,10 +181,20 @@ export class JobProcessor {
         console.log('');
       }
 
-      // Step 6: Read file contents and get project structure
+      // Step 6: Separate existing files from new files
       await job.updateProgress(60);
-      console.log('Step 6: Reading file contents (full files, no line limit)...');
-      const fileContents = await this.sandboxService.getFileContents(sandbox, filesToModify, Infinity, repoPath);
+      console.log('Step 6: Analyzing files (existing vs new)...');
+      const { existingFiles, newFiles } = await this.sandboxService.separateExistingAndNewFiles(
+        sandbox,
+        filesToModify,
+        repoPath
+      );
+
+      // Step 6.5: Read only existing files
+      console.log('Step 6.5: Reading existing file contents (full files, no line limit)...');
+      const fileContents = existingFiles.length > 0
+        ? await this.sandboxService.getFileContents(sandbox, existingFiles, Infinity, repoPath)
+        : new Map<string, string>();
       const allFiles = await this.sandboxService.getFileTree(sandbox, repoPath);
 
       // Step 7: Use LangGraph workflow for code generation + validation loop
@@ -159,7 +214,8 @@ export class JobProcessor {
         packageManager,
         relevantFiles,
         filesToModify,
-        fileContents,
+        fileContents,  // Only existing files with content
+        newFiles,  // List of files to be created
         allFiles,
         keywords,
         codeSkeletons: skeletons,
