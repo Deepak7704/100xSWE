@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 
 const MobileMenu = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -12,40 +12,40 @@ const MobileMenu = () => {
     <div className="lg:hidden">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="p-2 text-foreground"
+        className="p-2"
         aria-label="Toggle menu"
       >
-        {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        {isOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 top-[73px] bg-white border-t border-border z-40">
-          <div className="flex flex-col gap-6 p-8 font-sans text-lg font-medium">
+        <div className="absolute top-full left-0 right-0 bg-white border-b border-gray-200/60 shadow-lg">
+          <div className="flex flex-col items-start gap-4 px-6 py-6">
             <Link
               href="/"
-              className="hover:text-muted-foreground transition-colors"
+              className="font-sans font-medium text-base hover:text-muted-foreground transition-colors"
               onClick={() => setIsOpen(false)}
             >
               Home
             </Link>
             <a
               href="#about"
-              className="hover:text-muted-foreground transition-colors"
+              className="font-sans font-medium text-base hover:text-muted-foreground transition-colors"
               onClick={() => setIsOpen(false)}
             >
               About
             </a>
             <Link
               href="/dashboard"
-              className="hover:text-muted-foreground transition-colors"
+              className="font-sans font-medium text-base hover:text-muted-foreground transition-colors"
               onClick={() => setIsOpen(false)}
             >
               Dashboard
             </Link>
             <Button
               variant="cta"
-              size="lg"
-              className="rounded-full w-full"
+              size="default"
+              className="rounded-full w-full mt-2"
             >
               Sign Up
             </Button>
