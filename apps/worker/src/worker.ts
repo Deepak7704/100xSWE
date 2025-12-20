@@ -11,12 +11,9 @@ async function start() {
   try {
     console.log('Creating workers...\n');
 
-    // Worker 1: Indexing (processes indexing queue)
     const indexingWorker = await IndexingProcessor.createWorker();
     console.log(' Indexing worker created');
 
-    // Worker 2: Chat/Code Generation (processes worker-job queue)
-    // Note: GitHub tokens are now passed per-job via installationToken in job data
     const jobProcessor = new JobProcessor(connection);
 
     const chatWorker = new Worker(

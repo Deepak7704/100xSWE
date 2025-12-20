@@ -6,9 +6,6 @@ import type{
   PropertyInfo 
 } from './code_graph.service';
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// SKELETON DATA STRUCTURES (Simplified versions for output)
-// ═══════════════════════════════════════════════════════════════════════════════
 
 export interface CodeSkeleton {
   filePath: string;
@@ -58,18 +55,11 @@ export interface ClassSkeleton {
   extendsFrom?: string;
   isExported: boolean;
   properties: PropertyInfo[];      // ← REUSE from code_graph.service
-  methods: MethodInfo[];            // ← REUSE from code_graph.service
+  methods: MethodInfo[];
 }
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// CODE SKELETON SERVICE
-// ═══════════════════════════════════════════════════════════════════════════════
 
 export class CodeSkeletonService {
   
-  /**
-   * Generate skeleton from code graph
-   */
   generateSkeleton(graph: EnhancedCodeGraph, filePath: string): CodeSkeleton {
     const fileName = filePath.split('/').pop() || 'unknown';
     const fileNodes = this.getFileNodes(graph, filePath);
@@ -102,20 +92,15 @@ export class CodeSkeletonService {
     };
   }
 
-  /**
-   * Format skeleton as LLM-friendly text
-   */
   formatSkeletonForLLM(skeleton: CodeSkeleton): string {
     let output = '';
 
-    // Header
     output += `${'═'.repeat(80)}\n`;
     output += `FILE: ${skeleton.fileName}\n`;
     output += `Path: ${skeleton.filePath}\n`;
     output += `Stats: ${skeleton.stats.totalFunctions} functions, ${skeleton.stats.totalClasses} classes, ${skeleton.stats.totalImports} imports, ~${skeleton.stats.linesOfCode} lines\n`;
     output += `${'═'.repeat(80)}\n\n`;
 
-    // Imports
     if (skeleton.imports.length > 0) {
       output += `IMPORTS (${skeleton.imports.length})\n`;
       skeleton.imports.forEach(imp => {
@@ -124,7 +109,6 @@ export class CodeSkeletonService {
       output += `\n`;
     }
 
-    // Exports
     if (skeleton.exports.length > 0) {
       output += `EXPORTS (${skeleton.exports.length})\n`;
       skeleton.exports.forEach(exp => {
@@ -133,7 +117,6 @@ export class CodeSkeletonService {
       output += `\n`;
     }
 
-    // Functions
     if (skeleton.functions.length > 0) {
       output += `FUNCTIONS (${skeleton.functions.length})\n\n`;
       skeleton.functions.forEach(func => {
@@ -157,7 +140,6 @@ export class CodeSkeletonService {
       });
     }
 
-    // Classes
     if (skeleton.classes.length > 0) {
       output += `CLASSES (${skeleton.classes.length})\n\n`;
       skeleton.classes.forEach(cls => {
@@ -193,10 +175,6 @@ export class CodeSkeletonService {
 
     return output;
   }
-
-  // ═════════════════════════════════════════════════════════════════════════════
-  // PRIVATE HELPER METHODS
-  // ═════════════════════════════════════════════════════════════════════════════
 
   private getFileNodes(graph: EnhancedCodeGraph, filePath: string): EnhancedCodeNode[] {
     const nodeIds = graph.fileToNodes.get(filePath) || [];
@@ -288,8 +266,8 @@ export class CodeSkeletonService {
           linesOfCode: node.location.lineCount,
           extendsFrom: node.extendsFrom,
           isExported: node.isExported || false,
-          properties: node.properties || [],     // ← Direct reuse, no mapping
-          methods: node.methods || []            // ← Direct reuse, no mapping
+          properties: node.properties || [],
+          methods: node.methods || []
         };
       });
   }

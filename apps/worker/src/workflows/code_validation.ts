@@ -1,8 +1,3 @@
-/**
- * Code Generation + Validation LangGraph Workflow
- * Generates code, validates it, and retries on errors (max 3 iterations)
- */
-
 import { StateGraph, START, END, Annotation } from "@langchain/langgraph";
 import { Sandbox } from '@e2b/code-interpreter';
 import { AIService } from '../services/ai.service';
@@ -24,8 +19,8 @@ export const CodeValidationState = Annotation.Root({
 
   relevantFiles: Annotation<string[]>(),
   filesToModify: Annotation<string[]>(),
-  fileContents: Annotation<Map<string, string>>(),  // Only existing files with content
-  newFiles: Annotation<string[]>({  // Files that don't exist yet (to be created)
+  fileContents: Annotation<Map<string, string>>(),
+  newFiles: Annotation<string[]>({
     reducer: (_, update) => update,
     default: () => []
   }),
@@ -122,7 +117,7 @@ async function generateCodeNode(
       state.packageManager,
       state.codeSkeletons,
       previousErrors,
-      state.newFiles  // Pass list of files to be created
+      state.newFiles
     );
 
     console.log('Code generation complete');

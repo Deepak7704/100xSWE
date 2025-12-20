@@ -13,14 +13,14 @@ import pullRequest from "@/assets/pull_request_light.png"
 
 const ProcessVisualization = () => {
     const steps = [
-        { id: 1, title: "1.Database indexing", angle: 0, icon: dbImage },
-        { id: 2, title: "2.Retrieve relevant files using RRF", angle: 45, icon: files },
-        { id: 3, title: "3. AST & Code graph generation", angle: 90, icon: codeGraph },
-        { id: 4, title: "4.Compressed code graphs", angle: 135, icon: compressedFiles },
-        { id: 5, title: "5.Final files", angle: 180, icon: candidateFiles },
-        { id: 6, title: "6.Langgraph workflow", angle: 225, icon: langgraphFlow },
-        { id: 7, title: "7.Human approval", angle: 270, icon: humanApproval },
-        { id: 8, title: "8.Raise Pull Request", angle: 315, icon: pullRequest },
+        { id: 1, title: "Pinecone & Redis Indexing", angle: 0, icon: dbImage },
+        { id: 2, title: "Hybrid Search (RRF)", angle: 45, icon: files },
+        { id: 3, title: "AST & Code Graph", angle: 90, icon: codeGraph },
+        { id: 4, title: "Code Skeletons", angle: 135, icon: compressedFiles },
+        { id: 5, title: "Files to Modify", angle: 180, icon: candidateFiles },
+        { id: 6, title: "LangGraph Workflow", angle: 225, icon: langgraphFlow },
+        { id: 7, title: "Human Approval", angle: 270, icon: humanApproval },
+        { id: 8, title: "Create Pull Request", angle: 315, icon: pullRequest },
     ];
 
     const round = (num: number, decimals: number = 6) => {

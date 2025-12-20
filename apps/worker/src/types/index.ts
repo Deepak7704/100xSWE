@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-// File operation schemas
 export const FileOperationSchema = z.discriminatedUnion('type',[
     z.object({
         type : z.literal('createFile'),
@@ -26,13 +25,11 @@ export const FileOperationSchema = z.discriminatedUnion('type',[
     }),
 ]);
 
-// Generation schema for AI output
 export const GenerationSchema = z.object({
     fileOperations: z.array(FileOperationSchema).describe('Array of file operations to execute in order'),
     shellCommands: z.array(z.string()).describe('Shell commands to run (e.g., npm install package-name)'),
     explanation: z.string().describe('Brief explanation of what was created or modified'),
 });
 
-// Export types
 export type FileOperation = z.infer<typeof FileOperationSchema>
 export type GenerateOutput = z.infer<typeof GenerationSchema>

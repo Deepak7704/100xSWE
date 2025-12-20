@@ -11,7 +11,6 @@ import { connection as redis } from '@openswe/shared/queues';
 
 const router = Router();
 
-// Configuration from environment variables
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
 const GITHUB_CALLBACK_URL = process.env.GITHUB_CALLBACK_URL || 'http://localhost:3000/auth/github/callback';
@@ -21,24 +20,8 @@ if (!GITHUB_CLIENT_ID || !GITHUB_CLIENT_SECRET) {
     throw new Error('GitHub OAuth credentials (GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET) must be set!');
 }
 
-/**
- * CSRF Protection: OAuth State Management with Redis + TTL
- *
- * WHY REDIS + TTL (not in-memory Map):
- * 1. PERSISTENCE: Survives server restarts → OAuth flows don't fail mid-process
- * 2. SCALABILITY: Works with load balancers → user can hit different servers
- * 3. SECURITY: Automatic expiration via TTL → no manual cleanup needed
- * 4. RELIABILITY: No memory leaks from failed cleanup intervals
- *
- * TTL = 15 minutes (OAuth spec recommendation)
- * After 15 min: Redis automatically deletes expired states
- */
-const OAUTH_STATE_TTL = 15 * 60; // 15 minutes in seconds
+const OAUTH_STATE_TTL = 15 * 60;
 
-/**
- * Generate cryptographically secure OAuth state and store in Redis
- * State is automatically deleted after 15 minutes via TTL
- */
 async function generateOAuthState(): Promise<string> {
     const state = crypto.randomBytes(32).toString('base64url');
     const stateData = JSON.stringify({
@@ -46,19 +29,12 @@ async function generateOAuthState(): Promise<string> {
         createdAt: new Date().toISOString(),
     });
 
-    // Store in Redis with 15-minute TTL
-    // SETEX is atomic → no race conditions
     await redis.setex(`oauth:state:${state}`, OAUTH_STATE_TTL, stateData);
-
     console.log(`[OAuth] State created: ${state.substring(0, 8)}... (expires in ${OAUTH_STATE_TTL}s)`);
 
     return state;
 }
 
-/**
- * Verify OAuth state from Redis and delete to prevent replay attacks
- * Returns true if state is valid, false if expired/invalid
- */
 async function verifyOAuthState(state: string): Promise<boolean> {
     const stateKey = `oauth:state:${state}`;
 
@@ -70,7 +46,6 @@ async function verifyOAuthState(state: string): Promise<boolean> {
             return false;
         }
 
-        // Delete immediately to prevent replay attacks (one-time use)
         await redis.del(stateKey);
 
         const parsed = JSON.parse(storedData);
@@ -83,12 +58,10 @@ async function verifyOAuthState(state: string): Promise<boolean> {
     }
 }
 
-// ROUTE 1: Initiate OAuth flow
 router.get('/github/login', async (req: Request, res: Response) => {
 try {
     console.log('[OAuth] Initiating GitHub OAuth flow');
 
-    // Generate and store state in Redis with TTL
     const state = await generateOAuthState();
 
     const params = new URLSearchParams({
@@ -111,7 +84,6 @@ try {
 }
 });
 
-// ROUTE 2: OAuth callback from GitHub
 router.get('/github/callback', async (req: Request, res: Response) => {
 try {
     const { code, state, error } = req.query;
@@ -128,13 +100,11 @@ try {
 
     console.log('[OAuth] Received callback from GitHub');
 
-    // Verify CSRF state from Redis (also deletes to prevent replay)
     const isValidState = await verifyOAuthState(state as string);
     if (!isValidState) {
         throw new Error('Invalid or expired OAuth state parameter. Please try logging in again.');
     }
 
-    // Exchange code for access token
     console.log('[OAuth] Exchanging code for access token');
     const tokenResponse = await axios.post(
         'https://github.com/login/oauth/access_token',
@@ -155,15 +125,12 @@ try {
     }
     console.log('[OAuth] Access token received');
 
-    // Create Octokit instance with user's access token
     const octokit = new Octokit({ auth: access_token });
 
-    // Fetch user profile using Octokit
     console.log('[OAuth] Fetching user information from GitHub');
     const { data: githubUser } = await octokit.rest.users.getAuthenticated();
     console.log(`[OAuth] User authenticated: ${githubUser.login} (ID: ${githubUser.id})`);
 
-    // Get email if not in profile
     let email = githubUser.email;
     if (!email) {
         console.log('[OAuth] Email not in profile, fetching from emails endpoint');
@@ -173,15 +140,12 @@ try {
         email = primaryEmail?.email || emails[0]?.email || 'noemail@github.com';
     }
 
-    // ✅ CRITICAL: Save user to PostgreSQL (permanent storage)
-    // This ensures user data survives Redis crashes
     console.log('[OAuth] Saving user to PostgreSQL database');
     const user = await prisma.user.upsert({
         where: {
-            githubId: githubUser.id  // Find user by GitHub ID
+            githubId: githubUser.id
         },
         update: {
-            // Update if user exists (in case GitHub profile changed)
             username: githubUser.login,
             email: email!,
             name: githubUser.name,
@@ -190,7 +154,6 @@ try {
             lastLoginAt: new Date()
         },
         create: {
-            // Create new user if first login
             githubId: githubUser.id,
             username: githubUser.login,
             email: email!,
@@ -202,10 +165,9 @@ try {
     });
     console.log(`[OAuth] User saved to database: ${user.username} (DB ID: ${user.id}, GitHub ID: ${user.githubId})`);
 
-    // Create session in Redis (links to PostgreSQL user)
     console.log('[OAuth] Creating session in Redis');
     const sessionId = await createSession({
-        userId: user.id,              // ✅ Use PostgreSQL user.id (not GitHub ID)
+        userId: user.id,
         username: user.username,
         email: user.email,
         githubAccessToken: access_token,
@@ -215,13 +177,11 @@ try {
     });
     console.log(`[OAuth] Session created: ${sessionId}`);
 
-    // Generate JWT token
-    const jwtToken = generateSessionToken(sessionId, user.id);  // ✅ Use PostgreSQL user.id
+    const jwtToken = generateSessionToken(sessionId, user.id);
     console.log('[OAuth] JWT token generated');
 
-    // Prepare user data for frontend (use database user, not GitHub user)
     const userData = {
-        id: user.id,              // ✅ PostgreSQL user ID (not GitHub ID)
+        id: user.id,
         username: user.username,
         email: user.email,
         name: user.name,
@@ -229,7 +189,6 @@ try {
         profileUrl: user.profileUrl
     };
 
-    // Redirect to frontend with token and user data
     const redirectUrl = new URL(`${FRONTEND_URL}/auth/callback`);
     redirectUrl.searchParams.set('token', jwtToken);
     redirectUrl.searchParams.set('user', JSON.stringify(userData));
@@ -245,7 +204,6 @@ try {
 }
 });
 
-// ROUTE 3: Get current user info
 router.get('/me', authenticateUser, async (req: Request, res: Response) => {
 try {
     const user = req.user!;
@@ -268,7 +226,6 @@ try {
 }
 });
 
-// ROUTE 4: Logout
 router.post('/logout', authenticateUser, async (req: Request, res: Response) => {
 try {
     const user = req.user!;
@@ -287,7 +244,6 @@ try {
 }
 });
 
-// ROUTE 5: Refresh JWT token
 router.post('/refresh', async (req: Request, res: Response) => {
 try {
     const { token } = req.body;
@@ -310,24 +266,21 @@ try {
 }
 });
 
-// ROUTE 6: Get user's GitHub app installations
-// Fetches ONLY installations for the authenticated user
 router.get('/installations', authenticateUser, async (req: Request, res: Response) => {
 try {
     const user = req.user!;
 
     console.log(`[Auth] Fetching installations for user ${user.username}`);
 
-    // Use singleton Prisma client (no connection pool per request!)
     const installations = await prisma.installation.findMany({
         where: {
             accountLogin: user.username,
-            deletedAt: null  // Only active installations
+            deletedAt: null
         },
         include: {
             repositories: {
                 where: {
-                    removedAt: null  // Only active repos
+                    removedAt: null
                 }
             }
         }
@@ -353,42 +306,37 @@ try {
 }
 });
 
-// ROUTE 7: Get user's GitHub repositories (from app installations)
-// Fetches ONLY repositories where the GitHub App is installed
-// This way we don't need 'repo' scope in OAuth - clean separation of concerns
 router.get('/repos', authenticateUser, async (req: Request, res: Response) => {
 try {
     const user = req.user!;
 
     console.log(`[Auth] Fetching installed repositories for user ${user.username}`);
 
-    // Use singleton Prisma client
     const installations = await prisma.installation.findMany({
         where: {
             accountLogin: user.username,
-            deletedAt: null  // Only active installations
+            deletedAt: null
         },
         include: {
             repositories: {
                 where: {
-                    removedAt: null  // Only active repos
+                    removedAt: null
                 }
             }
         }
     });
 
-    // Flatten all repositories from all installations into a single array
     const allRepos = installations.flatMap((installation: any) =>
         installation.repositories.map((repo: any) => ({
             id: repo.githubId,
             name: repo.name,
             full_name: repo.fullName,
             html_url: `https://github.com/${repo.fullName}`,
-            description: null, // Not stored in DB, could fetch from GitHub if needed
+            description: null,
             private: repo.private,
-            language: null, // Not stored in DB
+            language: null,
             updated_at: repo.addedAt.toISOString(),
-            defaultBranch: 'main', // Default assumption, could be fetched if needed
+            defaultBranch: 'main',
             owner: {
                 login: repo.fullName.split('/')[0],
                 avatar_url: user.avatar

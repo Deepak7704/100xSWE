@@ -2,11 +2,11 @@ import { Github } from "lucide-react";
 
 const Footer = () => {
   return (
-    <footer className="bg-background border-t border-border py-12 px-4">
+    <footer className="bg-background border-t border-border py-8 sm:py-12 px-4 sm:px-6">
       <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-8">
-          <div className="flex flex-col items-center md:items-start gap-4">
-            <p className="font-sans text-sm text-muted-foreground">© 2025 100xSWE. All rights reserved.</p>
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6 sm:gap-8">
+          <div className="flex flex-col items-center md:items-start gap-3 sm:gap-4">
+            <p className="font-sans text-xs sm:text-sm text-muted-foreground">© 2025 100xSWE. All rights reserved.</p>
             <div className="flex gap-4">
               <a
                 href="https://twitter.com/100xSWE"

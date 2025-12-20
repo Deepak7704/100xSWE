@@ -1,8 +1,6 @@
 import crypto from 'crypto';
 import {connection} from '@openswe/shared/queues';
 
-//prefix for all session keys in redis
-//avoids conflicts with other data that is stored in redis
 const SESSION_PREFIX = 'session:';
 const SESSION_EXPIRE_DAYS = Number(process.env.SESSION_EXPIRE_DAYS);
 if(!SESSION_EXPIRE_DAYS){
@@ -10,7 +8,6 @@ if(!SESSION_EXPIRE_DAYS){
 }
 const SESSION_EXPIRE_MS = SESSION_EXPIRE_DAYS * 24 * 60 * 60 * 1000;
 
-//Type Definitions
 interface SessionData{
     userId : number;
     username : string;
@@ -21,12 +18,11 @@ interface SessionData{
     profileUrl : string;
 }
 interface Session extends SessionData{
-    sessionId : string; //unique session identifier
+    sessionId : string;
     createdAt : number;
     expiredAt : number;
 }
 
-// a helper fn that helps to generates cryptographically secure random session id 
 function generateSessionId():string{
     const randomBytes = crypto.randomBytes(32);
     const randomString = randomBytes.toString('base64url').slice(0,32);
@@ -34,19 +30,16 @@ function generateSessionId():string{
 }
 export async function createSession(data:SessionData):Promise<string>{
     const sessionId = generateSessionId();
-    const now = Date.now();//gets the current time stamp
+    const now = Date.now();
     const expiredAt = now + SESSION_EXPIRE_MS;
     const session : Session = {
-        ...data,//copy userId,uname,email and add sessid,timestamps,githubaccess token
+        ...data,
         sessionId,
         createdAt:now,
         expiredAt
     }
-    //format => "session:sess_abakldklj3i489273"
     const redisKey = `${SESSION_PREFIX}${sessionId}`;
-    //redis stores strings so we must serialize them
     const sessionJson = JSON.stringify(session);
-    //calculate ttl in seconds
     const ttlSeconds = Math.floor(SESSION_EXPIRE_MS/1000);
     try{
         await connection.setex(redisKey,ttlSeconds,sessionJson);
@@ -59,7 +52,6 @@ export async function createSession(data:SessionData):Promise<string>{
     return sessionId;
 }
 export async function getSession(sessionId:string):Promise<Session|null>{
-    //validate input
     if(!sessionId || sessionId.trim() === ''){
         console.log('[Session] getSession called with empty sessionid');
         return null;
@@ -71,7 +63,6 @@ export async function getSession(sessionId:string):Promise<Session|null>{
             console.log(`[Session] Session ${sessionId} not found`);
             return null;
         }
-        //Deserialize into JSON
         const session = JSON.parse(sessionJson) as Session;
         return session;
     }catch(error){
@@ -103,7 +94,6 @@ export async function deleteSession(sessionId:string):Promise<boolean>{
 export async function verifySession(sessionId:string):Promise<Session>{
     const session = await getSession(sessionId);
     if(!session){
-        //session not found in redis
         throw new Error('Session not found or expired');
     }
     const now = Date.now();
@@ -113,11 +103,7 @@ export async function verifySession(sessionId:string):Promise<Session>{
     }
     return session;
 }
-/**
- * SECURITY: Cleanup expired sessions using SCAN instead of KEYS
- * KEYS command blocks Redis and causes performance issues in production
- * SCAN is non-blocking and iterates through keys without freezing Redis
- */
+
 export async function cleanupExpiredSessions():Promise<number>{
     let cleanedCount = 0;
     try{
@@ -125,21 +111,16 @@ export async function cleanupExpiredSessions():Promise<number>{
         let cursor = '0';
         const now = Date.now();
 
-        // Use SCAN instead of KEYS to avoid blocking Redis
-        // SCAN iterates through keys without blocking other operations
         do {
-            // SCAN returns [cursor, keys] tuple
-            // cursor '0' means iteration is complete
             const result = await connection.scan(
                 cursor,
                 'MATCH', pattern,
-                'COUNT', 100  // Process 100 keys at a time
+                'COUNT', 100
             );
 
             cursor = result[0];
             const keys = result[1];
 
-            // Process each batch of keys
             for(const key of keys){
                 const sessionJson = await connection.get(key);
                 if(sessionJson){

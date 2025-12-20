@@ -1,6 +1,5 @@
 import { App } from '@octokit/app';
 
-// Validate environment variables
 const GITHUB_APP_ID = process.env.GITHUB_APP_ID;
 const GITHUB_APP_PRIVATE_KEY = process.env.GITHUB_APP_PRIVATE_KEY?.replace(/\\n/g, '\n');
 const GITHUB_WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET;
@@ -9,7 +8,6 @@ if (!GITHUB_APP_ID || !GITHUB_APP_PRIVATE_KEY || !GITHUB_WEBHOOK_SECRET) {
   throw new Error('Missing GitHub App credentials');
 }
 
-// Initialize GitHub App with Octokit
 const app = new App({
   appId: GITHUB_APP_ID,
   privateKey: GITHUB_APP_PRIVATE_KEY,
@@ -18,7 +16,6 @@ const app = new App({
   },
 });
 
-// Get authenticated Octokit instance for installation
 export async function getInstallationOctokit(installationId: number) {
   console.log(`[GitHub App] Authenticating installation ${installationId}`);
 
@@ -32,7 +29,6 @@ export async function getInstallationOctokit(installationId: number) {
   }
 }
 
-// Get raw installation token (for git clone, etc.)
 export async function getInstallationToken(installationId: number): Promise<string> {
   console.log(`[GitHub App] Generating token for installation ${installationId}`);
 
@@ -47,7 +43,6 @@ export async function getInstallationToken(installationId: number): Promise<stri
   }
 }
 
-// Verify webhook signature
 export async function verifyWebhookSignature(payload: Buffer | string, signature: string): Promise<boolean> {
   if (!signature) return false;
 
@@ -60,14 +55,12 @@ export async function verifyWebhookSignature(payload: Buffer | string, signature
   }
 }
 
-// Helper: Get repository details
 export async function getRepository(installationId: number, owner: string, repo: string) {
   const octokit = await getInstallationOctokit(installationId);
   const { data } = await (octokit as any).rest.repos.get({ owner, repo });
   return data;
 }
 
-// Helper: Create pull request
 export async function createPullRequest(
   installationId: number,
   owner: string,
@@ -87,7 +80,6 @@ export async function createPullRequest(
   return data;
 }
 
-// Helper: Get file contents
 export async function getContents(
   installationId: number,
   owner: string,

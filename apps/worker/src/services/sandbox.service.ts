@@ -1,17 +1,3 @@
-/**
- * Sandbox Service
- *
- * Handles all sandbox-related operations:
- * - Sandbox creation and management
- * - File I/O operations
- * - File operations execution (create, update, rewrite, delete)
- * - Shell command execution
- * - File tree and content retrieval
- *
- * Extracted from worker.ts lines 58-62, 90-96, 125-134
- * and sandbox_executor.ts lines 249-423
- */
-
 import { Sandbox } from '@e2b/code-interpreter';
 import { SandboxManager } from '../lib/sandbox_manager';
 import type { FileOperation } from '@openswe/shared';
@@ -23,10 +9,6 @@ export class SandboxService {
     this.sandboxManager = new SandboxManager();
   }
 
-  /**
-   * Get or create sandbox for a project
-   * Extracted from worker.ts lines 58-62
-   */
   async getOrCreateSandbox(projectId: string): Promise<Sandbox> {
     let sandbox = this.sandboxManager.get(projectId);
 
@@ -37,10 +19,6 @@ export class SandboxService {
     return sandbox;
   }
 
-  /**
-   * Get file tree of repository
-   * Extracted from sandbox_executor.ts lines 279-288
-   */
   async getFileTree(sandbox: Sandbox, dir: string = '/home/user/project'): Promise<string[]> {
     const result = await sandbox.commands.run(
       `find ${dir} -type f -not -path "*/node_modules/*" -not -path "*/.git/*" | head -100`
@@ -52,10 +30,6 @@ export class SandboxService {
       .map(p => p.replace(`${dir}/`, ''));
   }
 
-  /**
-   * Read contents of multiple files
-   * Extracted from sandbox_executor.ts lines 249-273
-   */
   async getFileContents(
     sandbox: Sandbox,
     filePaths: string[],
@@ -68,7 +42,6 @@ export class SandboxService {
 
     for (const path of filePaths) {
       try {
-        // Convert relative path to absolute path if needed
         const absolutePath = path.startsWith('/')
           ? path
           : `${repoPath}/${path}`;
@@ -82,7 +55,7 @@ export class SandboxService {
         const statusMsg = wasTruncated
           ? ` (truncated from ${lines.length} to ${maxLines} lines)`
           : ` (${lines.length} lines, ${fullContent.length} chars)`;
-        console.log(`  ✓ ${path}${statusMsg}`);
+        console.log(`  [OK] ${path}${statusMsg}`);
       } catch (error) {
         console.error(`  ✗ Error reading ${path}:`, (error as Error).message);
       }
@@ -92,9 +65,6 @@ export class SandboxService {
     return contents;
   }
 
-  /**
-   * Separate existing files from new files that need to be created
-   */
   async separateExistingAndNewFiles(
     sandbox: Sandbox,
     filePaths: string[],
@@ -112,7 +82,7 @@ export class SandboxService {
       const exists = await this.fileExists(sandbox, absolutePath);
       if (exists) {
         existingFiles.push(path);
-        console.log(`  ✓ Exists: ${path}`);
+        console.log(`  [OK] Exists: ${path}`);
       } else {
         newFiles.push(path);
         console.log(` New file: ${path}`);
@@ -127,10 +97,6 @@ export class SandboxService {
     return { existingFiles, newFiles };
   }
 
-  /**
-   * Execute file operations from AI generation
-   * Extracted from worker.ts lines 125-128
-   */
   async executeFileOperations(
     sandbox: Sandbox,
     operations: FileOperation[],
@@ -145,55 +111,43 @@ export class SandboxService {
     }
   }
 
-  /**
-   * Detect package manager used by the repository
-   * Returns package manager type for proper command generation
-   */
   async detectPackageManager(sandbox: Sandbox, repoPath: string): Promise<string> {
     try {
-      // Check for pnpm-lock.yaml
       const pnpmCheck = await sandbox.commands.run(`[ -f ${repoPath}/pnpm-lock.yaml ] && echo "exists" || echo "not found"`);
       if (pnpmCheck.stdout.trim() === 'exists') {
         return 'pnpm';
       }
 
-      // Check for yarn.lock
       const yarnCheck = await sandbox.commands.run(`[ -f ${repoPath}/yarn.lock ] && echo "exists" || echo "not found"`);
       if (yarnCheck.stdout.trim() === 'exists') {
         return 'yarn';
       }
 
-      // Check for package-lock.json (npm)
       const npmCheck = await sandbox.commands.run(`[ -f ${repoPath}/package-lock.json ] && echo "exists" || echo "not found"`);
       if (npmCheck.stdout.trim() === 'exists') {
         return 'npm';
       }
 
-      // Check for requirements.txt or pyproject.toml (Python)
       const pythonCheck = await sandbox.commands.run(`[ -f ${repoPath}/requirements.txt ] || [ -f ${repoPath}/pyproject.toml ] && echo "exists" || echo "not found"`);
       if (pythonCheck.stdout.trim() === 'exists') {
         return 'pip';
       }
 
-      // Check for Gemfile (Ruby)
       const rubyCheck = await sandbox.commands.run(`[ -f ${repoPath}/Gemfile ] && echo "exists" || echo "not found"`);
       if (rubyCheck.stdout.trim() === 'exists') {
         return 'bundler';
       }
 
-      // Check for Cargo.toml (Rust)
       const rustCheck = await sandbox.commands.run(`[ -f ${repoPath}/Cargo.toml ] && echo "exists" || echo "not found"`);
       if (rustCheck.stdout.trim() === 'exists') {
         return 'cargo';
       }
 
-      // Check for go.mod (Go)
       const goCheck = await sandbox.commands.run(`[ -f ${repoPath}/go.mod ] && echo "exists" || echo "not found"`);
       if (goCheck.stdout.trim() === 'exists') {
         return 'go';
       }
 
-      // Default to npm if nothing detected
       return 'npm';
     } catch (error) {
       console.warn('Error detecting package manager, defaulting to npm:', error);
@@ -201,9 +155,6 @@ export class SandboxService {
     }
   }
 
-  /**
-   * Ensure package manager is installed in the sandbox
-   */
   private async ensurePackageManagerInstalled(sandbox: Sandbox, packageManager: string): Promise<void> {
     try {
       // Check if package manager is available
@@ -237,12 +188,6 @@ export class SandboxService {
     }
   }
 
-  /**
-   * Execute shell commands in the sandbox
-   * Extracted from worker.ts lines 130-134
-   *
-   * Commands are non-fatal - if they fail, we log and continue
-   */
   async runShellCommands(sandbox: Sandbox, commands: string[], repoPath: string, packageManager?: string): Promise<void> {
     if (commands && commands.length > 0) {
       // Ensure package manager is installed if specified
@@ -273,18 +218,10 @@ export class SandboxService {
     }
   }
 
-  /**
-   * Cleanup sandbox
-   */
   async cleanup(projectId: string): Promise<void> {
     await this.sandboxManager.cleanup(projectId);
   }
 
-  // ========== PRIVATE HELPER METHODS ==========
-
-  /**
-   * Check if file exists in sandbox
-   */
   private async fileExists(sandbox: Sandbox, path: string): Promise<boolean> {
     try {
       await sandbox.files.read(path);
@@ -294,36 +231,20 @@ export class SandboxService {
     }
   }
 
-  /**
-   * Read file from sandbox
-   * Extracted from sandbox_executor.ts lines 290-292
-   */
   private async readFile(sandbox: Sandbox, path: string): Promise<string> {
     return await sandbox.files.read(path);
   }
 
-  /**
-   * Write file to sandbox
-   * Extracted from sandbox_executor.ts lines 294-298
-   */
   private async writeFile(sandbox: Sandbox, path: string, content: string): Promise<void> {
     const dir = path.substring(0, path.lastIndexOf('/'));
     if (dir) await sandbox.commands.run(`mkdir -p ${dir}`);
     await sandbox.files.write(path, content);
   }
 
-  /**
-   * Delete file from sandbox
-   * Extracted from sandbox_executor.ts lines 300-302
-   */
   private async deleteFile(sandbox: Sandbox, path: string): Promise<void> {
     await sandbox.commands.run(`rm -f ${path}`);
   }
 
-  /**
-   * Execute a single file operation
-   * Extracted from sandbox_executor.ts lines 323-423
-   */
   private async executeFileOperation(sandbox: Sandbox, operation: FileOperation): Promise<void> {
     console.log(`\n  Executing operation: ${operation.type}`);
     console.log(`  Target file: ${operation.path}`);

@@ -14,9 +14,9 @@ const Hero = () => {
 
   return (
     <>
-      <section className="min-h-screen flex flex-col items-center justify-center px-4 pt-32 pb-20">
+      <section className="min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 pt-24 sm:pt-32 pb-16 sm:pb-20">
         <div className="max-w-6xl mx-auto text-center">
-          <h1 className="font-serif text-5xl md:text-7xl lg:text-8xl xl:text-9xl mb-12 leading-tight tracking-tight">
+          <h1 className="font-serif text-3xl sm:text-5xl md:text-7xl lg:text-8xl xl:text-9xl mb-8 sm:mb-12 leading-tight tracking-tight">
             From GitHub Issues to Pull Requests in Seconds
           </h1>
 

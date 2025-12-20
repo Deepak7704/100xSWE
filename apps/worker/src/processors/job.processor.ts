@@ -1,12 +1,3 @@
-/**
- * Job Processor
- *
- * Orchestrates the entire code change workflow by coordinating all services.
- * Main entry point for processing background jobs.
- *
- * Uses Hybrid Search (BM25 + Vector) to find relevant files.
- **/
-
 import Redis from 'ioredis';
 import { Queue } from 'bullmq';
 import { GitHubService } from '../services/github.service';
@@ -33,10 +24,6 @@ export class JobProcessor {
     this.indexingQueue = new Queue('indexing', { connection: redis });
   }
 
-  /**
-   * Process a code change job
-   * Main workflow orchestration
-   */
   async process(job: any): Promise<{
     success: boolean;
     prUrl: string;
@@ -51,46 +38,39 @@ export class JobProcessor {
     console.log(`Processing job ${job.id}: ${task}`);
     console.log(`Repository ID: ${repoId}`);
 
-    // Get GitHub token (installation token from job data or fallback to env)
     const githubToken = installationToken || process.env.GITHUB_ACCESS_TOKEN;
     if (!githubToken) {
       throw new Error('No GitHub token available (neither installationToken nor GITHUB_ACCESS_TOKEN)');
     }
 
-    // Create GitHubService with this job's token
     const githubService = new GitHubService(githubToken);
     console.log(`Using ${installationToken ? 'installation' : 'personal'} token for GitHub operations`);
 
     try {
-      // If indexingJobId is provided, wait for indexing to complete first
       if (indexingJobId) {
         console.log(`Waiting for indexing job ${indexingJobId} to complete...`);
         await this.waitForIndexing(indexingJobId);
         console.log(`Indexing complete! Proceeding with code generation...`);
       }
-      // Step 1: Create or get sandbox
       await job.updateProgress(10);
       console.log('Step 1: Creating sandbox...');
       const sandbox = await this.sandboxService.getOrCreateSandbox(projectId);
 
-      // Step 2: Clone repository directly (no forking needed for GitHub Apps)
       await job.updateProgress(20);
-      console.log('Step 2: Cloning repository directly...');
+      console.log('Step 2: Cloning repository...');
       const repoPath = await this.gitService.cloneRepository(sandbox, repoUrl);
 
-      // Step 3.5: Detect package manager
       console.log('Step 3.5: Detecting package manager...');
       const packageManager = await this.sandboxService.detectPackageManager(sandbox, repoPath);
       console.log(`Detected package manager: ${packageManager}\n`);
 
-      // Step 4: Find relevant files using Hybrid Search (BM25 + Vector)
       await job.updateProgress(40);
       console.log('Step 4: Finding relevant files using Hybrid Search...');
       const relevantFiles = await this.aiService.findRelevantFilesHybrid(
         this.redis,
         repoId,
         task,
-        20  // top 20 relevant files
+        20
       );
 
       if (relevantFiles.length === 0) {
@@ -102,19 +82,16 @@ export class JobProcessor {
       const codeSkeletonService = new CodeSkeletonService();
 
       const candidateContents = await this.sandboxService.getFileContents(sandbox, relevantFiles, Infinity, repoPath);
-      //Build code graph
       const codeGraph = graphService.buildGraph(candidateContents);
-      console.log(`code graph build for the above candidate files ${codeGraph.nodes.size} nodes extracted`);
+      console.log(`Code graph built: ${codeGraph.nodes.size} nodes extracted`);
 
-      // Step 4.6: Find files that DEPEND on candidate files (reverse dependencies)
-      console.log('\nStep 4.6: Finding dependent files (files that import from candidate files)...');
+      console.log('\nStep 4.6: Finding dependent files...');
       const dependentFiles = graphService.findDependentFiles(
         codeGraph,
         relevantFiles,
         relevantFiles
       );
 
-      // Declare skeletons map once, populate based on whether dependents exist
       const skeletons = new Map<string, string>();
 
       if (dependentFiles.length > 0) {
@@ -123,65 +100,55 @@ export class JobProcessor {
           console.log(`  ${idx + 1}. ${file}`);
         });
 
-        // Read dependent file contents and add to code graph
         const dependentContents = await this.sandboxService.getFileContents(
           sandbox, dependentFiles, Infinity, repoPath
         );
 
-        // Rebuild graph with dependent files included
         const allCandidateContents = new Map([...candidateContents, ...dependentContents]);
         const expandedCodeGraph = graphService.buildGraph(allCandidateContents);
         console.log(`Expanded code graph: ${expandedCodeGraph.nodes.size} nodes (including dependents)`);
 
-        // Mark candidate files (primary selection)
         relevantFiles.forEach(filePath => {
           const skeleton = codeSkeletonService.generateSkeleton(expandedCodeGraph, filePath);
           const formatted = codeSkeletonService.formatSkeletonForLLM(skeleton);
           skeletons.set(filePath, `[CANDIDATE FILE]\n${formatted}`);
         });
 
-        // Mark dependent files (may need updates if candidates change)
         dependentFiles.forEach(filePath => {
           const skeleton = codeSkeletonService.generateSkeleton(expandedCodeGraph, filePath);
           const formatted = codeSkeletonService.formatSkeletonForLLM(skeleton);
-          skeletons.set(filePath, `[DEPENDENT FILE - imports from candidate files]\n${formatted}`);
+          skeletons.set(filePath, `[DEPENDENT FILE]\n${formatted}`);
         });
 
         console.log(`Generated ${skeletons.size} code skeletons (${relevantFiles.length} candidates + ${dependentFiles.length} dependents)`);
       } else {
         console.log('No dependent files found.');
 
-        // Generate skeletons for candidate files only
         relevantFiles.forEach(filePath => {
           const skeleton = codeSkeletonService.generateSkeleton(codeGraph, filePath);
           const formatted = codeSkeletonService.formatSkeletonForLLM(skeleton);
           skeletons.set(filePath, formatted);
         });
-        console.log(`Generated ${skeletons.size} code skeletons for llm analysis`);
+        console.log(`Generated ${skeletons.size} code skeletons`);
       }
 
-      // Step 5: Select files to modify using LLM (with fallback to hybrid search ranking)
       console.log('Step 5: Selecting files to modify...');
       const keywords = extractKeywords(task);
       let filesToModify = await this.aiService.selectFilesToModifyWithSkeletons(task, skeletons, repoPath);
 
-      // FALLBACK: If LLM selected 0 files, use top-ranked files from hybrid search
       if (filesToModify.length === 0) {
-        console.warn('\nFALLBACK TRIGGERED: LLM selected 0 files');
-        console.warn('Using top-ranked files from hybrid search results instead...\n');
+        console.warn('\nFallback: LLM selected 0 files, using hybrid search results');
 
-        // Take top 3-5 files from relevantFiles (already ranked by hybrid search)
         const topN = Math.min(5, relevantFiles.length);
         filesToModify = relevantFiles.slice(0, topN);
 
-        console.log(`Fallback selected top ${filesToModify.length} files from hybrid search:`);
+        console.log(`Selected top ${filesToModify.length} files from hybrid search`);
         filesToModify.forEach((file, idx) => {
           console.log(`  ${idx + 1}. ${file}`);
         });
         console.log('');
       }
 
-      // Step 6: Separate existing files from new files
       await job.updateProgress(60);
       console.log('Step 6: Analyzing files (existing vs new)...');
       const { existingFiles, newFiles } = await this.sandboxService.separateExistingAndNewFiles(
@@ -190,16 +157,14 @@ export class JobProcessor {
         repoPath
       );
 
-      // Step 6.5: Read only existing files
-      console.log('Step 6.5: Reading existing file contents (full files, no line limit)...');
+      console.log('Step 6.5: Reading existing file contents...');
       const fileContents = existingFiles.length > 0
         ? await this.sandboxService.getFileContents(sandbox, existingFiles, Infinity, repoPath)
         : new Map<string, string>();
       const allFiles = await this.sandboxService.getFileTree(sandbox, repoPath);
 
-      // Step 7: Use LangGraph workflow for code generation + validation loop
       await job.updateProgress(70);
-      console.log('\nStarting LangGraph Code Generation + Validation Workflow');
+      console.log('\nStep 7: Starting LangGraph Code Generation Workflow');
 
       const branchName = generateBranchName(task);
       const graph = createCodeValidationGraph();
@@ -250,8 +215,7 @@ export class JobProcessor {
       console.log(`\nPR Created: ${workflowResult.prUrl}`);
       console.log(`PR Number: #${workflowResult.prNumber}`);
 
-      // Step 8: Get file diffs for frontend display
-      console.log('\nGenerating file diffs for frontend...');
+      console.log('\nStep 8: Generating file diffs...');
       const fileDiffs = await this.getFileDiffs(
         sandbox,
         repoPath,
@@ -259,9 +223,8 @@ export class JobProcessor {
       );
       console.log(`Generated diffs for ${fileDiffs.length} files`);
 
-      // Step 9: Mark as complete (sandbox will auto-cleanup after 30min timeout)
       await job.updateProgress(100);
-      console.log('\nSandbox will remain active for 30 minutes for frontend display');
+      console.log('\nSandbox will remain active for 30 minutes');
 
       console.log(`\nJob ${job.id} completed successfully!`);
 
@@ -281,9 +244,6 @@ export class JobProcessor {
     }
   }
 
-  /**
-   * Get file diffs for modified files
-   */
   private async getFileDiffs(
     sandbox: any,
     repoPath: string,
@@ -291,7 +251,6 @@ export class JobProcessor {
   ): Promise<Array<{ path: string; oldContent: string; newContent: string; diffOutput: string }>> {
     const diffs: Array<{ path: string; oldContent: string; newContent: string; diffOutput: string }> = [];
 
-    // Files to exclude from diff display (lock files and large dependency files)
     const excludePatterns = [
       'package-lock.json',
       'yarn.lock',
@@ -315,7 +274,6 @@ export class JobProcessor {
 
     for (const op of fileOperations) {
       try {
-        // Skip excluded files
         if (shouldExcludeFile(op.path)) {
           console.log(`Skipping excluded file: ${op.path}`);
           continue;
@@ -323,30 +281,24 @@ export class JobProcessor {
 
         const filePath = `${repoPath}/${op.path}`;
 
-        // Get current content (after changes)
         let newContent = '';
         try {
           const readResult = await sandbox.files.read(filePath);
           newContent = readResult || '';
         } catch (error) {
-          // File might not exist (deleted or failed to create)
           newContent = '';
         }
 
-        // Get old content from git (before changes)
         let oldContent = '';
         try {
           const gitShowResult = await sandbox.commands.run(`cd ${repoPath} && git show HEAD:${op.path}`);
           oldContent = gitShowResult.stdout || '';
         } catch (error) {
-          // File didn't exist before (new file)
           oldContent = '';
         }
 
-        // Generate git diff output - compare against the default branch
         let diffOutput = '';
         try {
-          // Detect the default branch name
           let baseBranch = 'main';
           try {
             const branchListResult = await sandbox.commands.run(
@@ -362,16 +314,13 @@ export class JobProcessor {
 
           console.log(`Generating diff for ${op.path} against origin/${baseBranch}...`);
 
-          // Generate diff against the base branch
           const gitDiffResult = await sandbox.commands.run(
             `cd ${repoPath} && git diff origin/${baseBranch}...HEAD -- ${op.path}`
           );
           diffOutput = gitDiffResult.stdout || '';
 
-          // If no diff output (new file or deleted file), generate manual diff
           if (!diffOutput) {
             if (!oldContent && newContent) {
-              // New file
               const lines = newContent.split('\n');
               diffOutput = `diff --git a/${op.path} b/${op.path}\n`;
               diffOutput += `new file mode 100644\n`;
@@ -380,7 +329,6 @@ export class JobProcessor {
               diffOutput += `@@ -0,0 +1,${lines.length} @@\n`;
               diffOutput += lines.map(line => `+${line}`).join('\n');
             } else if (oldContent && !newContent) {
-              // Deleted file
               const lines = oldContent.split('\n');
               diffOutput = `diff --git a/${op.path} b/${op.path}\n`;
               diffOutput += `deleted file mode 100644\n`;
@@ -403,7 +351,6 @@ export class JobProcessor {
         });
       } catch (error) {
         console.warn(`Failed to get diff for ${op.path}:`, error);
-        // Add empty diff to maintain file list
         diffs.push({
           path: op.path,
           oldContent: '',
@@ -416,9 +363,6 @@ export class JobProcessor {
     return diffs;
   }
 
-  /**
-   * Wait for indexing job to complete before proceeding
-   */
   private async waitForIndexing(indexingJobId: string): Promise<void> {
     const maxWaitTime = 10 * 60 * 1000; // 10 minutes max
     const pollInterval = 5000; // Check every 5 seconds
@@ -449,7 +393,6 @@ export class JobProcessor {
           throw new Error(`Indexing failed: ${reason}`);
         }
 
-        // Still running, wait and check again
         await new Promise(resolve => setTimeout(resolve, pollInterval));
 
       } catch (error) {

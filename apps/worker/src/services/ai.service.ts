@@ -1,16 +1,3 @@
-/**
- * AI Service
- *
- * Handles all AI-related operations:
- * - File discovery using LangGraph
- * - LLM-based file selection (with code skeletons)
- * - AI code generation with enhanced context
- * - Prompt building with structural summaries
- *
- * Extracted from worker.ts lines 70-120, 173-251
- * and sandbox_executor.ts lines 93-129, 170-238
- */
-
 import { Sandbox } from '@e2b/code-interpreter';
 import { generateObject, generateText } from 'ai';
 import type { Redis } from 'ioredis';
@@ -21,10 +8,6 @@ import { extractKeywords } from '../utils/helpers';
 import { HybridSearchService } from './hybrid-search.service';
 
 export class AIService {
-  /**
-   * Find relevant files using LangGraph workflow
-   * Extracted from worker.ts lines 70-86
-   */
   async findRelevantFiles(
     sandbox: Sandbox,
     repoPath: string,
@@ -48,10 +31,6 @@ export class AIService {
     return relevantFiles;
   }
 
-  /**
-   * Find relevant files using Hybrid Search (BM25 + Vector)
-   * More accurate than LangGraph for pre-indexed repositories
-   */
   async findRelevantFilesHybrid(
     redis: Redis,
     repoId: string,
@@ -60,19 +39,15 @@ export class AIService {
   ): Promise<string[]> {
     console.log('Finding relevant files using Hybrid Search (BM25 + Vector)');
 
-    // Initialize hybrid search service
     const hybridSearch = new HybridSearchService(redis, repoId);
     await hybridSearch.initialize();
 
-    // Search using both BM25 and Vector similarity
     const results = await hybridSearch.search(userPrompt, topK, 'rrf');
 
-    // Get unique file paths
     const relevantFiles = hybridSearch.getUniqueFiles(results);
 
     console.log(`Found ${relevantFiles.length} relevant files via Hybrid Search`);
 
-    // Also show grouped results for transparency
     const grouped = hybridSearch.groupByFile(results);
     console.log('\nRelevant chunks per file:');
     grouped.forEach((chunks, filePath) => {
@@ -83,10 +58,6 @@ export class AIService {
     return relevantFiles;
   }
 
-  /**
-   * Search files by content using grep
-   * Extracted from sandbox_executor.ts lines 93-129
-   */
   async searchFilesByContent(
     sandbox: Sandbox,
     keywords: string[],
@@ -125,12 +96,6 @@ export class AIService {
     return files;
   }
 
-  /**
-   * Use LLM to select which files need modification
-   * Extracted from sandbox_executor.ts lines 170-238
-   * 
-   * NOTE: This method reads full file contents - use selectFilesToModifyWithSkeletons() for better performance
-   */
   async selectFilesToModify(
     sandbox: Sandbox,
     userPrompt: string,
@@ -142,7 +107,6 @@ export class AIService {
     const fileContents = new Map<string, string>();
     for (const filePath of candidateFiles) {
       try {
-        // Convert relative path to absolute path
         const absolutePath = filePath.startsWith('/')
           ? filePath
           : `${repoPath}/${filePath}`;
@@ -190,7 +154,6 @@ export class AIService {
       maxOutputTokens: 200,
     });
 
-    // Parse multiple file paths
     const selectedFiles = text
       .trim()
       .split('\n')
@@ -206,10 +169,6 @@ export class AIService {
     return selectedFiles;
   }
 
-  /**
-   * Select files to modify using CODE SKELETONS (not full content)
-   * This saves ~70-80% of LLM tokens while maintaining full context
-   */
   async selectFilesToModifyWithSkeletons(
   userPrompt: string,
   skeletons: Map<string, string>,
@@ -262,42 +221,32 @@ YOUR OUTPUT (file paths only):`;
   console.log(text);
   console.log('--- END RESPONSE ---\n');
 
-  // FIX: More flexible and robust parsing
   const lines = text.trim().split('\n');
   const selectedFiles: string[] = [];
 
   for (const line of lines) {
     let trimmed = line.trim();
 
-    // Skip empty lines
     if (!trimmed) continue;
 
-    // Skip common markdown/formatting prefixes
     if (trimmed.startsWith('#') || trimmed.startsWith('**')) continue;
 
-    // Remove bullets, numbers, and list markers
     trimmed = trimmed.replace(/^[-*•\d.)\]]+\s*/, '');
 
-    // Remove markdown code backticks
     trimmed = trimmed.replace(/^`+|`+$/g, '');
 
-    // Remove quotes
     trimmed = trimmed.replace(/^["']|["']$/g, '');
 
     trimmed = trimmed.trim();
 
-    // Must contain a path separator and have a valid extension
     const hasPathSeparator = trimmed.includes('/');
     const hasValidExtension = /\.(tsx?|jsx?|py|java|go|rs|cpp|c|h|vue|svelte)$/i.test(trimmed);
 
     if (!hasPathSeparator || !hasValidExtension) continue;
 
-    // Extract file path (handle both absolute and relative)
     let filePath = trimmed;
 
-    // If relative path, convert to absolute
     if (!filePath.startsWith('/')) {
-      // Remove 'src/' prefix duplication if present
       if (filePath.startsWith('src/') && repoPath.endsWith('/project')) {
         filePath = `${repoPath}/${filePath}`;
       } else {
@@ -305,9 +254,7 @@ YOUR OUTPUT (file paths only):`;
       }
     }
 
-    // Validate it's within the project directory
     if (filePath.startsWith('/home/user/project/')) {
-      // Avoid duplicates
       if (!selectedFiles.includes(filePath)) {
         selectedFiles.push(filePath);
       }
@@ -320,7 +267,7 @@ YOUR OUTPUT (file paths only):`;
       console.log(`  ${index + 1}. ${file}`);
     });
   } else {
-    console.warn('\n⚠️  WARNING: LLM selected 0 files from code skeletons!');
+    console.warn('\nWARNING: LLM selected 0 files from code skeletons!');
     console.warn('Available files in skeletons:');
     let count = 0;
     for (const [path] of skeletons) {
@@ -335,16 +282,12 @@ YOUR OUTPUT (file paths only):`;
     console.warn('1. LLM output format doesn\'t match expected format');
     console.warn('2. No files are relevant to the user request');
     console.warn('3. Parsing logic needs adjustment');
-    console.warn('\n💡 Fallback will use hybrid search ranking instead\n');
+    console.warn('\nFallback will use hybrid search ranking instead\n');
   }
 
   return selectedFiles;
 }
 
-  /**
-   * Generate code changes using AI
-   * Extracted from worker.ts lines 98-120
-   */
   async generateCodeChanges(
     repoUrl: string,
     task: string,
@@ -391,10 +334,6 @@ YOUR OUTPUT (file paths only):`;
     return result.object as GenerateOutput;
   }
 
-  /**
-   * Build enhanced prompt for AI code generation with code skeleton context
-   * Extracted from worker.ts lines 173-251
-   */
   private buildPrompt(
     repoUrl: string,
     task: string,
@@ -407,13 +346,11 @@ YOUR OUTPUT (file paths only):`;
     previousErrors?: string[],
     newFiles?: string[]
   ): string {
-    // Build full content section for files to modify (existing files only)
     let filesToModifySection = '';
     fileContents.forEach((content, path) => {
       filesToModifySection += `\n=== FILE: ${path} ===\n\`\`\`\n${content}\n\`\`\`\n\n`;
     });
 
-    // Build section for new files to create
     let newFilesSection = '';
     if (newFiles && newFiles.length > 0) {
       newFilesSection = '\n=== NEW FILES TO CREATE ===\n';
@@ -425,14 +362,12 @@ YOUR OUTPUT (file paths only):`;
       newFilesSection += 'These are NEW files - do not attempt to use "updateFile" or "rewriteFile".\n';
     }
 
-    // Build context section with code skeletons (for related files)
     let contextSection = '';
     if (skeletons && skeletons.size > 0) {
       contextSection = '\n=== CONTEXT: Related Files (Code Skeletons) ===\n';
       contextSection += 'These are structural summaries of related files to help you understand the codebase:\n\n';
 
       skeletons.forEach((skeleton, path) => {
-        // Only include skeletons for files NOT in filesToModify
         if (!fileContents.has(path)) {
           contextSection += `${skeleton}\n\n`;
         }
@@ -619,9 +554,6 @@ Remember:
 - Ensure all changes work together cohesively`;
   }
 
-  /**
-   * Get package manager specific instructions for AI
-   */
   private getPackageManagerInstructions(packageManager: string): string {
     const defaultInstruction = '- Example: ["npm install lodash"] for adding dependencies';
     

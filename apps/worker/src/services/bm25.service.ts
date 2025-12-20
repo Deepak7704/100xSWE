@@ -126,7 +126,7 @@ export class BM25Service {
 
     const key = `bm25:index:${this.repoId}`;
     await this.redis.set(key, JSON.stringify(index));
-    console.log(`✓ BM25 index saved to Redis at key: ${key}`);
+    console.log(`BM25 index saved to Redis at key: ${key}`);
     console.log(`  Storage: ${(JSON.stringify(index).length / 1024).toFixed(2)} KB\n`);
   }
 
@@ -165,7 +165,7 @@ export class BM25Service {
     );
     this.avgDocLength = index.avgDocLength;
 
-    console.log(`✓ BM25 index loaded from Redis`);
+    console.log(`BM25 index loaded from Redis`);
     console.log(`  Total documents: ${this.documents.size}`);
     console.log(`  Unique tokens: ${this.invertedIndex.size}`);
     console.log(`  Index created: ${index.metadata.timestamp}\n`);

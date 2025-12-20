@@ -16,7 +16,6 @@
       this.gitService = new GitService();
     }
 
-    // Existing method: Index entire repository
     async indexRepository(
       projectId: string,
       repoUrl: string,
@@ -103,7 +102,6 @@
       }
     }
 
-    // NEW METHOD: Index only specific files (for incremental indexing)
     async indexSpecificFiles(
       projectId: string,
       repoUrl: string,
@@ -116,16 +114,13 @@
   this.sandboxService.getOrCreateSandbox(projectId);
 
       try {
-        // Clone or update repository in sandbox
         let repoPath: string;
         try {
-          // Try to use existing clone
           repoPath = `/home/user/${projectId.replace('/', '_')}`;
           await sandbox.commands.run(`cd ${repoPath} && git fetch && git
    checkout ${branch} && git pull`);
           console.log('Repository updated');
         } catch {
-          // Clone fresh if doesn't exist
           repoPath = await this.gitService.cloneRepository(sandbox,
   repoUrl);
           console.log('Repository cloned');
@@ -135,12 +130,10 @@
         let successCount = 0;
         let failureCount = 0;
 
-        // Process each specified file
         for (const filePath of filePaths) {
           try {
             const fullPath = `${repoPath}/${filePath}`;
 
-            // Check if file exists
             const checkResult = await sandbox.commands.run(`test -f
   ${fullPath} && echo "exists"`);
             if (!checkResult.stdout.includes('exists')) {
@@ -174,7 +167,6 @@
         return allChunks;
 
       } finally {
-        // Don't cleanup sandbox for incremental (reuse it)
         console.log('Keeping sandbox for reuse\n');
       }
     }

@@ -1,12 +1,3 @@
-/**
- * Utility Helper Functions
- *
- * Contains simple utility functions used across the application
- */
-
-/**
- * Generate meaningful branch name from task description
- */
 export function generateBranchName(task: string): string {
   const keywords = extractKeywords(task).slice(0, 4);
   const slug = keywords.join('-');
@@ -20,10 +11,6 @@ export function generateBranchName(task: string): string {
   return `feat/${truncatedSlug}-${shortHash}`;
 }
 
-/**
- * Extract meaningful keywords from natural language prompts
- * Extracted from sandbox_executor.ts lines 135-145
- */
 export function extractKeywords(prompt: string): string[] {
   const stopWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from'];
 

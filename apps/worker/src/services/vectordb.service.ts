@@ -10,16 +10,10 @@ export class VectorDBService {
   private pinecone: Pinecone | null = null;
   private index: any = null;
   private readonly INDEX_NAME = 'openswe-code-index';
-  private namespace: string = 'code-chunks'; // Will be set per repository
+  private namespace: string = 'code-chunks';
   private readonly HOST_URL = process.env.PINECONE_HOST;
 
-  /**
-   * Set the namespace for this repository
-   * This ensures vectors are isolated per repository
-   */
   setNamespace(repoId: string): void {
-    // Convert repoId (e.g., "owner/repo") to valid namespace format
-    // Pinecone namespaces must be alphanumeric + hyphens/underscores
     this.namespace = `repo-${repoId.replace(/[^a-zA-Z0-9]/g, '-')}`;
   }
 
@@ -31,7 +25,6 @@ export class VectorDBService {
       throw new Error('PINECONE_HOST environment variable is not set');
     }
 
-    // Set namespace if repoId is provided
     if (repoId) {
       this.setNamespace(repoId);
     }
@@ -113,7 +106,6 @@ export class VectorDBService {
     try {
       this.setNamespace(repoId);
 
-      // Delete all vectors where metadata.filePath matches
       await this.index.namespace(this.namespace).deleteMany({
         filePath: filePath
       });

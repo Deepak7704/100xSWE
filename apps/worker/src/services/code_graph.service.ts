@@ -2,9 +2,6 @@ import { parse } from "@babel/parser";
 import traverse, { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// TYPE DEFINITIONS (INTERFACES)
-// ═══════════════════════════════════════════════════════════════════════════════
 
 export interface Parameter {
   name: string;
@@ -79,19 +76,10 @@ export interface EnhancedCodeGraph {
   fileToNodes: Map<string, string[]>;
   nameToNodes: Map<string, string[]>;
   functionCalls: Map<string, Set<string>>;
-  importedBy: Map<string, Set<string>>;  // target file → files that import it
+  importedBy: Map<string, Set<string>>;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// MAIN SERVICE CLASS
-// ═══════════════════════════════════════════════════════════════════════════════
-
 export class EnhancedCodeGraphService {
-  /**
-   * Build enhanced code graph from file contents
-   * INPUT: fileContents - Map of filePath -> sourceCode (already read from sandbox)
-   * OUTPUT: EnhancedCodeGraph with all nodes, edges, and relationships
-   */
   buildGraph(fileContents: Map<string, string>): EnhancedCodeGraph {
     const graph: EnhancedCodeGraph = {
       nodes: new Map(),
@@ -125,15 +113,10 @@ export class EnhancedCodeGraphService {
     return graph;
   }
 
-  // ═════════════════════════════════════════════════════════════════════════════
-  // MAIN AST EXTRACTION METHOD
-  // ═════════════════════════════════════════════════════════════════════════════
-
   private extractFromAST(ast: any, filePath: string, graph: EnhancedCodeGraph): void {
     const scopeCallsMap = new Map<string, Set<string>>();
 
     traverse(ast, {
-      // VISITOR 1: FunctionDeclaration
       FunctionDeclaration: (path: NodePath) => {
         const node = path.node as t.FunctionDeclaration;
 
@@ -173,7 +156,6 @@ export class EnhancedCodeGraphService {
         });
       },
 
-      // VISITOR 2: ClassDeclaration
       ClassDeclaration: (path: NodePath) => {
         const node = path.node as t.ClassDeclaration;
 
@@ -214,7 +196,6 @@ export class EnhancedCodeGraphService {
         }
       },
 
-      // VISITOR 3: ImportDeclaration
       ImportDeclaration: (path: NodePath) => {
         const node = path.node as t.ImportDeclaration;
         const importSource = node.source.value;
@@ -226,7 +207,6 @@ export class EnhancedCodeGraphService {
             importName = spec.local.name;
           } else if (t.isImportSpecifier(spec)) {
             const importedNode = (spec as t.ImportSpecifier).imported;
-            // FIX: Check if imported is an Identifier before accessing .name
             if (t.isIdentifier(importedNode)) {
               importName = importedNode.name;
             }
@@ -261,10 +241,6 @@ export class EnhancedCodeGraphService {
     });
   }
 
-  // ═════════════════════════════════════════════════════════════════════════════
-  // HELPER METHODS - SIGNATURE BUILDING
-  // ═════════════════════════════════════════════════════════════════════════════
-
   private buildFunctionSignature(
     node: t.FunctionDeclaration,
     path: NodePath
@@ -284,7 +260,6 @@ export class EnhancedCodeGraphService {
       };
     });
 
-    // FIX: Check if returnType exists AND is not Noop
     const returnTypeNode = node.returnType;
     const returnType = returnTypeNode && !t.isNoop(returnTypeNode)
       ? this.extractTypeString((returnTypeNode as any).typeAnnotation)
@@ -300,10 +275,6 @@ export class EnhancedCodeGraphService {
       calledFunctions
     };
   }
-
-  // ═════════════════════════════════════════════════════════════════════════════
-  // HELPER METHODS - EXTRACT CALLED FUNCTIONS
-  // ═════════════════════════════════════════════════════════════════════════════
 
   private extractCalledFunctions(path: NodePath): string[] {
     const calledFunctions = new Set<string>();
@@ -329,10 +300,6 @@ export class EnhancedCodeGraphService {
 
     return Array.from(calledFunctions);
   }
-
-  // ═════════════════════════════════════════════════════════════════════════════
-  // HELPER METHODS - EXTRACT FUNCTION CONTEXT
-  // ═════════════════════════════════════════════════════════════════════════════
 
   private extractFunctionContext(path: NodePath): FunctionContext {
     const usedVariables = new Set<string>();
@@ -383,10 +350,6 @@ export class EnhancedCodeGraphService {
     };
   }
 
-  // ═════════════════════════════════════════════════════════════════════════════
-  // HELPER METHODS - EXTRACT CLASS PROPERTIES
-  // ═════════════════════════════════════════════════════════════════════════════
-
   private extractClassProperties(node: t.ClassDeclaration): PropertyInfo[] {
     const properties: PropertyInfo[] = [];
 
@@ -409,10 +372,6 @@ export class EnhancedCodeGraphService {
     return properties;
   }
 
-  // ═════════════════════════════════════════════════════════════════════════════
-  // HELPER METHODS - EXTRACT CLASS METHODS
-  // ═════════════════════════════════════════════════════════════════════════════
-
   private extractClassMethods(
     node: t.ClassDeclaration,
     path: NodePath,
@@ -434,7 +393,6 @@ export class EnhancedCodeGraphService {
           optional: param.optional || false
         }));
 
-        // FIX: Same guard for returnType
         const returnTypeNode = (member as any).returnType;
         const returnType = returnTypeNode && !t.isNoop(returnTypeNode)
           ? this.extractTypeString(returnTypeNode.typeAnnotation)
@@ -460,10 +418,6 @@ export class EnhancedCodeGraphService {
 
     return methods;
   }
-
-  // ═════════════════════════════════════════════════════════════════════════════
-  // HELPER METHODS - GRAPH OPERATIONS
-  // ═════════════════════════════════════════════════════════════════════════════
 
   private addNodeToGraph(graph: EnhancedCodeGraph, node: EnhancedCodeNode): void {
     graph.nodes.set(node.id, node);
@@ -491,10 +445,6 @@ export class EnhancedCodeGraphService {
     });
     graph.edges.set(source, edges);
   }
-
-  // ═════════════════════════════════════════════════════════════════════════════
-  // HELPER METHODS - UTILITY FUNCTIONS
-  // ═════════════════════════════════════════════════════════════════════════════
 
   private isNodeExported(path: NodePath): boolean {
     if (path.parent && t.isExportNamedDeclaration(path.parent)) {
@@ -575,14 +525,6 @@ export class EnhancedCodeGraphService {
     return keywords.includes(name);
   }
 
-  // ═════════════════════════════════════════════════════════════════════════════
-  // REVERSE DEPENDENCY TRACKING METHODS
-  // ═════════════════════════════════════════════════════════════════════════════
-
-  /**
-   * Build reverse import map after all files are parsed
-   * Maps: target module → Set of files that import it
-   */
   private buildReverseImportMap(graph: EnhancedCodeGraph): void {
     graph.edges.forEach((edgeList, sourceFile) => {
       edgeList.forEach(edge => {
@@ -598,15 +540,6 @@ export class EnhancedCodeGraphService {
     });
   }
 
-  /**
-   * Find all files that import from the given selected files
-   * This identifies "dependents" - files that would break if selected files change
-   * 
-   * @param graph - The code graph with importedBy map populated
-   * @param selectedFiles - Array of file paths that were selected for modification
-   * @param allParsedFiles - All files that were parsed (to limit scope to known files)
-   * @returns Array of file paths that depend on the selected files
-   */
   findDependentFiles(
     graph: EnhancedCodeGraph,
     selectedFiles: string[],

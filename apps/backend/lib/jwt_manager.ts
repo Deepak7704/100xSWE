@@ -1,14 +1,13 @@
 import jwt from 'jsonwebtoken';
-  import crypto from 'crypto';
+import crypto from 'crypto';
 
-  const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET;
 
-  if (!JWT_SECRET) {
-    throw new Error('JWT_SECRET must be set in environment variables!');
-  }
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET must be set in environment variables!');
+}
 
-  const SESSION_EXPIRE_DAYS = Number(process.env.SESSION_EXPIRE_DAYS) ||
-   7;
+const SESSION_EXPIRE_DAYS = Number(process.env.SESSION_EXPIRE_DAYS) || 7;
 
   interface JwtPayload {
     sessionId: string;

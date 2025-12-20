@@ -158,7 +158,7 @@ export class ChunkingService{
             chunks.push(chunk);
             console.log(`    → Lines ${i + 1}-${i + chunkLines.length}`);
         }
-        console.log(`  ✓ Created ${chunks.length} line-based chunks`);
+        console.log(`  Created ${chunks.length} line-based chunks`);
         return chunks;
     }
 

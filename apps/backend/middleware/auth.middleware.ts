@@ -2,10 +2,6 @@ import type {Request,Response,NextFunction} from 'express';
 import {verifySessionToken} from '../lib/jwt_manager';
 import {verifySession} from '../lib/session_manager';
 
-//extract jwt from authorization header
-// extracts sessionId from jwt
-//fetch user session and attach user to request
-
 export async function authenticateUser(req:Request,res:Response,next:NextFunction):Promise<void>{
     try{
         const authHeader = req.headers.authorization;
@@ -74,7 +70,7 @@ export async function authenticateUser(req:Request,res:Response,next:NextFunctio
             expiredAt :
             session.expiredAt
         };
-        console.log(`[Auth Middleware] ✓ AUTHENTICATED ${req.method} ${req.path} - User: ${session.username} (${session.userId})`);
+        console.log(`[Auth Middleware] AUTHENTICATED ${req.method} ${req.path} - User: ${session.username} (${session.userId})`);
         next();
     }catch(error){
         console.error(`[Auth Middleware] ERROR ${req.method} ${req.path} -`,error);

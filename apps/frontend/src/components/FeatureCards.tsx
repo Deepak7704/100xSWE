@@ -1,28 +1,28 @@
 import React from "react";
-import { Target, Brain, Shield, Zap } from "lucide-react";
+import { Search, GitBranch, Code2, Workflow } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import ProcessVisualization from "./ProcessVisualization";
 
 const features = [
   {
-    icon: Target,
-    title: "Precision Testing",
-    description: "Automated test generation and validation for every pull request. Our AI analyzes your code changes and creates comprehensive test suites. Ensures code quality with intelligent edge case detection.",
+    icon: Search,
+    title: "Intelligent Search",
+    description: "Our advanced search technology combines multiple techniques to find exactly the right files in your codebase. No more manual searching through thousands of files—let AI pinpoint exactly what needs to change.",
   },
   {
-    icon: Brain,
-    title: "Multi-Agent AI",
-    description: "Advanced orchestration of specialized AI agents working in harmony. Each agent focuses on specific tasks like code analysis, testing, and review. Collaborative intelligence ensures optimal solutions.",
+    icon: Code2,
+    title: "Deep Code Understanding",
+    description: "The system analyzes your code structure to understand how different parts connect and depend on each other. This ensures changes are made with full awareness of the broader codebase context.",
   },
   {
-    icon: Shield,
-    title: "Security First",
-    description: "Built-in vulnerability scanning and security checks on every commit. Automatically detects potential security risks in dependencies and code. Provides actionable recommendations to fix issues instantly.",
+    icon: Workflow,
+    title: "Automated Workflows",
+    description: "Smart orchestration handles the entire process from understanding your request to delivering working code. Built-in validation catches errors before they reach your repository.",
   },
   {
-    icon: Zap,
-    title: "Lightning Fast",
-    description: "From issue detection to pull request in seconds, not hours. AI-powered automation handles the entire development workflow seamlessly. Reduces manual coding time by up to 80% with intelligent suggestions.",
+    icon: GitBranch,
+    title: "Seamless PR Creation",
+    description: "Once changes are validated and tested in isolated environments, pull requests are automatically created and ready for your review. Ship faster with confidence.",
   },
 ];
 

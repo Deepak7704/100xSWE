@@ -28,7 +28,6 @@ interface InstallationRecord {
     repositories: RepositoryRecord[];
 }
 
-// Legacy interface (kept for compatibility)
 interface Installation{
     installationId : number;
     accountLogin : string;
@@ -61,7 +60,6 @@ router.post('/',async(req,res)=>{
             const repositories = body.repositories || [];
             console.log('App installed');
 
-            // Create installation in database with all repos in one transaction
             await prisma.installation.create({
                 data: {
                     installationId,
@@ -95,7 +93,6 @@ router.post('/',async(req,res)=>{
             const account = body.installation.account;
             console.log(`[Installation] Uninstalled by ${account.login}`);
 
-            // Delete from database (cascade deletes all repos automatically)
             await prisma.installation.delete({
                 where: { installationId }
             });
@@ -107,13 +104,11 @@ router.post('/',async(req,res)=>{
                 installationId
             });
         }
-        //Repositories added to installation
         if(event === 'installation_repositories' && body.action === 'added'){
             const installationId = body.installation.id;
             const addedRepos = body.repositories_added || [];
             console.log(`[Installation] ${addedRepos.length} repos added to ${installationId}`);
 
-            // Bulk insert all added repos to database
             await prisma.repository.createMany({
                 data: addedRepos.map((repo: any) => ({
                     githubId: repo.id,
@@ -126,7 +121,6 @@ router.post('/',async(req,res)=>{
                 }))
             });
 
-            // Update installation timestamp
             await prisma.installation.update({
                 where: { installationId },
                 data: { updatedAt: new Date() }
@@ -145,7 +139,6 @@ router.post('/',async(req,res)=>{
             const removedRepos = body.repositories_removed || [];
             console.log(`${removedRepos.length} repos removed from ${installationId}`);
 
-            // Bulk delete all removed repos from database
             await prisma.repository.deleteMany({
                 where: {
                     fullName: {
@@ -154,7 +147,6 @@ router.post('/',async(req,res)=>{
                 }
             });
 
-            // Update installation timestamp
             await prisma.installation.update({
                 where: { installationId },
                 data: { updatedAt: new Date() }
@@ -169,14 +161,11 @@ router.post('/',async(req,res)=>{
             });
         }
 
-        // Push and pull_request events are not handled here
-        // They should be sent to /webhook/github endpoint
         if (event === 'push' || event === 'pull_request') {
             console.log(`[Installation] Received ${event} - this should go to /webhook/github`);
             return res.status(200).json({
                 message: `${event} events should be sent to /webhook/github endpoint`,
-                event,
-                note: 'This endpoint only handles installation events'
+                event
             });
         }
 
@@ -197,44 +186,41 @@ export async function getInstallationForRepo(repoFullName: string): Promise<numb
     });
     return repo?.installationId || null;
 }
-// GET /list route - Returns a list of installations for authenticated user only
+
 router.get('/list', authenticateUser, async (req, res) => {
   try {
     const username = req.user!.username;
 
     console.log(`[Installation List] Fetching installations for user: ${username}`);
 
-    // Fetch only installations belonging to the authenticated user
     const installations = await prisma.installation.findMany({
       where: {
-        accountLogin: username,  // Filter by authenticated user's GitHub username
-        deletedAt: null          // Only active installations
+        accountLogin: username,
+        deletedAt: null
       },
       include: {
         repositories: {
           where: {
-            removedAt: null      // Only active repos
+            removedAt: null
           }
         }
       }
     });
 
-    // Transform database records to API response format
     const installationList = installations.map((install: InstallationRecord) => ({
-      installationId: install.installationId,   // Unique ID of the installation
-      account: install.accountLogin,            // Account login name (e.g., GitHub username)
-      type: install.accountType,                // Account type (e.g., 'User' or 'Organization')
-      repositories: install.repositories.length, // Number of repositories installed
-      repos: install.repositories.map((r: RepositoryRecord) => r.fullName), // List of repository full names
-      installedAt: install.installedAt          // Installation timestamp
+      installationId: install.installationId,
+      account: install.accountLogin,
+      type: install.accountType,
+      repositories: install.repositories.length,
+      repos: install.repositories.map((r: RepositoryRecord) => r.fullName),
+      installedAt: install.installedAt
     }));
 
     console.log(`[Installation List] Found ${installationList.length} installation(s) for user ${username}`);
 
-    // Send JSON response containing total and detailed list
     res.json({
-      total: installationList.length,  // Total number of installations
-      installations: installationList  // Array of installation objects
+      total: installationList.length,
+      installations: installationList
     });
   } catch (error: any) {
     console.error('[Installation List] Error:', error);

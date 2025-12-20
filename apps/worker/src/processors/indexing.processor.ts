@@ -49,10 +49,8 @@
       const worker = new Worker(
         'indexing',
         async (job: Job<IndexJob>) => {
-          // Route to correct handler based on job name
           if (job.name === 'index-repo') {
-            return await IndexingProcessor.processFullIndex(job as
-  Job<FullIndexJob>);
+            return await IndexingProcessor.processFullIndex(job as Job<FullIndexJob>);
           }
           if (job.name === 'incremental-index') {
             return await IndexingProcessor.processIncrementalIndex(job as Job<IncrementalIndexJob>);
@@ -76,10 +74,8 @@
       return worker;
     }
 
-    // Full index: Index entire repository (existing logic unchanged)
     static async processFullIndex(job: Job<FullIndexJob>) {
-      const { projectId, repoUrl, repoId, branch = 'main', afterSHA } =
-  job.data;
+      const { projectId, repoUrl, repoId, branch = 'main', afterSHA } = job.data;
 
       console.log('\n' + '='.repeat(70));
       console.log('FULL INDEXING JOB START');
@@ -166,7 +162,6 @@
         await vectorDB.upsertVectors(vectors);
         await job.updateProgress(90);
 
-        // Store metadata for incremental indexing
         await redis.hset(`index:${repoId}:${branch}:meta`, {
           last_indexed_at: Date.now().toString(),
           last_index_type: 'full',
@@ -198,9 +193,7 @@
       }
     }
 
-    // Incremental index: Update only changed files
-    static async processIncrementalIndex(job: Job<IncrementalIndexJob>)
-  {
+    static async processIncrementalIndex(job: Job<IncrementalIndexJob>) {
       const {
         projectId,
         repoUrl,
@@ -226,7 +219,6 @@
 
         await job.updateProgress(10);
 
-        // Initialize all services
         const repositoryIndexer = new RepositoryIndexer();
         const embeddingService = new EmbeddingService();
         const bm25Service = new BM25Service(redis, repoId);
@@ -235,9 +227,7 @@
 
         await job.updateProgress(20);
 
-        // STEP 1: Remove deleted files from all indexes
-        console.log(`STEP 1: Removing ${changedFiles.removed.length}
-  deleted files\n`);
+        console.log(`STEP 1: Removing ${changedFiles.removed.length} deleted files\n`);
 
         for (const filePath of changedFiles.removed) {
           try {
@@ -252,11 +242,8 @@
 
         await job.updateProgress(40);
 
-        // STEP 2: Index added and modified files
-        const filesToIndex = [...changedFiles.added,
-  ...changedFiles.modified];
-        console.log(`\nSTEP 2: Indexing ${filesToIndex.length}
-  added/modified files\n`);
+        const filesToIndex = [...changedFiles.added, ...changedFiles.modified];
+        console.log(`\nSTEP 2: Indexing ${filesToIndex.length} added/modified files\n`);
 
         if (filesToIndex.length === 0) {
           console.log('No files to index\n');
@@ -282,7 +269,6 @@
           };
         }
 
-        // Index only specific files using new method
         const chunks = await repositoryIndexer.indexSpecificFiles(
           projectId,
           repoUrl,
@@ -317,19 +303,15 @@
           };
         }
 
-        // STEP 3: Generate embeddings for changed chunks
         console.log('STEP 3: Generating embeddings\n');
-        const embeddings = await
-  embeddingService.generateEmbeddings(chunks);
+        const embeddings = await embeddingService.generateEmbeddings(chunks);
         await job.updateProgress(70);
         console.log(`Generated ${embeddings.length} embeddings\n`);
 
-        // STEP 4: Update BM25 index (remove old, add new)
         console.log('STEP 4: Updating BM25 index\n');
         await bm25Service.updateFiles(chunks);
         await job.updateProgress(80);
 
-        // STEP 5: Upsert vectors (insert or update)
         console.log('STEP 5: Upserting vectors\n');
         const vectors = chunks
           .map((chunk, idx) => {
@@ -369,7 +351,6 @@
         await vectorDB.upsertVectors(vectors);
         await job.updateProgress(90);
 
-        // Update metadata
         await redis.hset(`index:${repoId}:${branch}:meta`, {
           last_indexed_at: Date.now().toString(),
           last_index_type: 'incremental',
