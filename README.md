@@ -1,6 +1,6 @@
 # 100xSWE
 
-![100xSWE](apps/frontend/public/2.png)
+![100xSWE](apps/frontend/public/Architecture and Workflow.png)
 
 ### AI-Powered Software Engineering Agent
 
