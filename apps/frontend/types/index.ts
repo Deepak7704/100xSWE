@@ -30,7 +30,7 @@ export interface GitHubRepo {
 // Job status from backend /api/status endpoint
 export interface Job {
   jobId: string;
-  state: 'waiting' | 'active' | 'completed' | 'failed';
+  state: "waiting" | "active" | "completed" | "failed";
   progress: number;
   result?: unknown;
 }

@@ -36,19 +36,20 @@ const GitDiff = ({ jobId, token }: GitDiffProps) => {
       return;
     }
 
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+    const backendUrl =
+      process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
     let intervalId: NodeJS.Timeout | null = null;
 
     const fetchFileDiffs = async () => {
       try {
         const response = await fetch(`${backendUrl}/api/job-details/${jobId}`, {
           headers: {
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
           },
         });
 
         if (!response.ok) {
-          throw new Error('Failed to fetch file diffs');
+          throw new Error("Failed to fetch file diffs");
         }
 
         const data = await response.json();
@@ -56,14 +57,14 @@ const GitDiff = ({ jobId, token }: GitDiffProps) => {
         setIsLoading(false);
 
         // Stop polling when job is completed or failed
-        if (data.state === 'completed' || data.state === 'failed') {
+        if (data.state === "completed" || data.state === "failed") {
           if (intervalId) {
             clearInterval(intervalId);
             intervalId = null;
           }
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        setError(err instanceof Error ? err.message : "Unknown error");
         setIsLoading(false);
       }
     };
@@ -100,7 +101,10 @@ const GitDiff = ({ jobId, token }: GitDiffProps) => {
   if (!files || files.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-muted-foreground text-sm">No changes to display yet. Changes will appear here once code generation is complete.</p>
+        <p className="text-muted-foreground text-sm">
+          No changes to display yet. Changes will appear here once code
+          generation is complete.
+        </p>
       </div>
     );
   }
@@ -114,31 +118,36 @@ const GitDiff = ({ jobId, token }: GitDiffProps) => {
       );
     }
 
-    const lines = diffOutput.split('\n');
+    const lines = diffOutput.split("\n");
 
     return (
       <div className="font-mono text-xs bg-background">
         {lines.map((line, idx) => {
-          let bgColor = '';
-          let textColor = 'text-foreground';
-          let linePrefix = '';
+          let bgColor = "";
+          let textColor = "text-foreground";
+          let linePrefix = "";
 
-          if (line.startsWith('+')) {
-            bgColor = 'bg-green-50 dark:bg-green-950/30';
-            textColor = 'text-green-700 dark:text-green-400';
-            linePrefix = '+';
-          } else if (line.startsWith('-')) {
-            bgColor = 'bg-red-50 dark:bg-red-950/30';
-            textColor = 'text-red-700 dark:text-red-400';
-            linePrefix = '-';
-          } else if (line.startsWith('@@')) {
-            bgColor = 'bg-blue-50 dark:bg-blue-950/30';
-            textColor = 'text-blue-700 dark:text-blue-400';
-          } else if (line.startsWith('diff --git') || line.startsWith('index') ||
-                     line.startsWith('---') || line.startsWith('+++') ||
-                     line.startsWith('new file') || line.startsWith('deleted file')) {
-            bgColor = 'bg-muted/50';
-            textColor = 'text-muted-foreground';
+          if (line.startsWith("+")) {
+            bgColor = "bg-green-50 dark:bg-green-950/30";
+            textColor = "text-green-700 dark:text-green-400";
+            linePrefix = "+";
+          } else if (line.startsWith("-")) {
+            bgColor = "bg-red-50 dark:bg-red-950/30";
+            textColor = "text-red-700 dark:text-red-400";
+            linePrefix = "-";
+          } else if (line.startsWith("@@")) {
+            bgColor = "bg-blue-50 dark:bg-blue-950/30";
+            textColor = "text-blue-700 dark:text-blue-400";
+          } else if (
+            line.startsWith("diff --git") ||
+            line.startsWith("index") ||
+            line.startsWith("---") ||
+            line.startsWith("+++") ||
+            line.startsWith("new file") ||
+            line.startsWith("deleted file")
+          ) {
+            bgColor = "bg-muted/50";
+            textColor = "text-muted-foreground";
           }
 
           return (
@@ -149,7 +158,7 @@ const GitDiff = ({ jobId, token }: GitDiffProps) => {
               <span className="select-none text-muted-foreground mr-4 inline-block w-8 text-right">
                 {idx + 1}
               </span>
-              <span className="whitespace-pre">{line || ' '}</span>
+              <span className="whitespace-pre">{line || " "}</span>
             </div>
           );
         })}
@@ -168,7 +177,9 @@ const GitDiff = ({ jobId, token }: GitDiffProps) => {
           >
             <SelectTrigger className="w-full max-w-md">
               <SelectValue>
-                <span className="font-mono text-sm">{files[selectedFile].path}</span>
+                <span className="font-mono text-sm">
+                  {files[selectedFile].path}
+                </span>
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
@@ -191,7 +202,7 @@ const GitDiff = ({ jobId, token }: GitDiffProps) => {
             <p className="text-sm font-mono">{files[selectedFile].path}</p>
           </div>
           <div className="overflow-x-auto">
-            {renderUnifiedDiff(files[selectedFile].diffOutput || '')}
+            {renderUnifiedDiff(files[selectedFile].diffOutput || "")}
           </div>
         </Card>
       </ScrollArea>

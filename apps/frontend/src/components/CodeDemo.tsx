@@ -2,13 +2,9 @@ import { Button } from "@/components/ui/button";
 import { Github } from "lucide-react";
 import LangGraphFlow from "@/components/LangGraphFlow";
 
-
 const CodeDemo = () => {
   return (
     <>
-      
-      
-
       {/* Code Demo Section */}
       <section className="py-12 sm:py-20 md:py-32 px-4 sm:px-6 bg-background scroll-mt-16">
         <div className="max-w-7xl mx-auto">
@@ -19,14 +15,13 @@ const CodeDemo = () => {
                 Setup in Minutes, Ship in Seconds
               </h2>
               <p className="font-sans text-base sm:text-lg lg:text-xl leading-relaxed text-foreground">
-                Connect your GitHub repository and describe what you need. Our AI understands your codebase, finds the right files to modify, generates production-ready code, and creates pull requests—all automatically validated before reaching your repo.
+                Connect your GitHub repository and describe what you need. Our
+                AI understands your codebase, finds the right files to modify,
+                generates production-ready code, and creates pull requests—all
+                automatically validated before reaching your repo.
               </p>
               <div className="flex gap-4">
-                <Button
-                  variant="cta"
-                  size="lg"
-                  className="rounded-full"
-                >
+                <Button variant="cta" size="lg" className="rounded-full">
                   <Github className="w-5 h-5 mr-2" />
                   Connect with GitHub
                 </Button>

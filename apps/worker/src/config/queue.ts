@@ -1,1 +1,1 @@
-export { connection } from '@openswe/shared/queues';
+export { connection } from "@openswe/shared/queues";

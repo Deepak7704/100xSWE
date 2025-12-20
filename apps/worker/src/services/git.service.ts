@@ -1,24 +1,26 @@
-import { Sandbox } from '@e2b/code-interpreter';
+import { Sandbox } from "@e2b/code-interpreter";
 
 export class GitService {
   private gitInstalled = false;
 
   private async ensureGitInstalled(sandbox: Sandbox): Promise<void> {
     if (this.gitInstalled) {
-      console.log('Git already installed');
+      console.log("Git already installed");
       return;
     }
 
-    console.log('Checking for git...');
-    const check = await sandbox.commands.run('git --version', { timeoutMs: 15000 });
+    console.log("Checking for git...");
+    const check = await sandbox.commands.run("git --version", {
+      timeoutMs: 15000,
+    });
 
     if (check.exitCode === 0) {
-      console.log('Git already available');
+      console.log("Git already available");
       this.gitInstalled = true;
       return;
     }
 
-    console.log('Installing git locally (no sudo)...');
+    console.log("Installing git locally (no sudo)...");
     const installCommand = `
             cd /home/user && \
             wget https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.44.0.tar.gz && \
@@ -30,14 +32,16 @@ export class GitService {
             git --version
         `;
 
-    const result = await sandbox.commands.run(installCommand, { timeoutMs: 600000 });
+    const result = await sandbox.commands.run(installCommand, {
+      timeoutMs: 600000,
+    });
 
     if (result.exitCode !== 0) {
       console.error(result.stderr);
       throw new Error("Failed to install git locally.");
     }
 
-    console.log('Git installed successfully!');
+    console.log("Git installed successfully!");
     this.gitInstalled = true;
   }
 
@@ -46,12 +50,14 @@ export class GitService {
 
     const urlPattern = /^https:\/\/github\.com\/[\w\-]+\/[\w\-\.]+(?:\.git)?$/;
     if (!urlPattern.test(repoUrl)) {
-      throw new Error('Invalid repository URL format. Only GitHub URLs are allowed.');
+      throw new Error(
+        "Invalid repository URL format. Only GitHub URLs are allowed."
+      );
     }
 
     console.log(`Cloning: ${repoUrl}`);
 
-    const targetDir = '/home/user/project';
+    const targetDir = "/home/user/project";
     await sandbox.commands.run(`rm -rf ${targetDir}`);
 
     const escapedRepoUrl = repoUrl.replace(/'/g, "'\\''");
@@ -66,10 +72,10 @@ export class GitService {
 
     if (result.exitCode !== 0) {
       console.error(result.stderr);
-      throw new Error('Failed to clone repository.');
+      throw new Error("Failed to clone repository.");
     }
 
-    console.log('Repository cloned successfully!');
+    console.log("Repository cloned successfully!");
     return targetDir;
   }
 
@@ -85,16 +91,29 @@ export class GitService {
     const escapedBranchName = branchName.replace(/'/g, "'\\''");
     const escapedCommitMessage = commitMessage.replace(/'/g, "'\\''");
 
-    await sandbox.commands.run(`cd '${escapedRepoPath}' && git config user.email "bot@100xswe.com"`);
-    await sandbox.commands.run(`cd '${escapedRepoPath}' && git config user.name "100xSWE Bot"`);
+    await sandbox.commands.run(
+      `cd '${escapedRepoPath}' && git config user.email "bot@100xswe.com"`
+    );
+    await sandbox.commands.run(
+      `cd '${escapedRepoPath}' && git config user.name "100xSWE Bot"`
+    );
 
-    await sandbox.commands.run(`cd '${escapedRepoPath}' && git checkout -b '${escapedBranchName}'`);
+    await sandbox.commands.run(
+      `cd '${escapedRepoPath}' && git checkout -b '${escapedBranchName}'`
+    );
 
     await sandbox.commands.run(`cd '${escapedRepoPath}' && git add .`);
-    await sandbox.commands.run(`cd '${escapedRepoPath}' && git commit -m '${escapedCommitMessage}'`);
+    await sandbox.commands.run(
+      `cd '${escapedRepoPath}' && git commit -m '${escapedCommitMessage}'`
+    );
 
-    const authenticatedRepoUrl = forkUrl.replace('https://github.com', `https://x-access-token:${githubToken}@github.com`);
+    const authenticatedRepoUrl = forkUrl.replace(
+      "https://github.com",
+      `https://x-access-token:${githubToken}@github.com`
+    );
     const escapedRepoUrl = authenticatedRepoUrl.replace(/'/g, "'\\''");
-    await sandbox.commands.run(`cd '${escapedRepoPath}' && git push '${escapedRepoUrl}' '${escapedBranchName}'`);
+    await sandbox.commands.run(
+      `cd '${escapedRepoPath}' && git push '${escapedRepoUrl}' '${escapedBranchName}'`
+    );
   }
 }

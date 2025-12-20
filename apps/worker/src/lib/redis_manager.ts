@@ -1,5 +1,5 @@
-import { Redis } from 'ioredis';
-import { connection } from '@openswe/shared/queues';
+import { Redis } from "ioredis";
+import { connection } from "@openswe/shared/queues";
 
 export const TTL = {
   BM25_INDEX: 7 * 24 * 60 * 60,
@@ -68,7 +68,7 @@ export class RedisManager {
       const exists = await this.redis.exists(`bm25:index:${repoId}`);
       return exists === 1;
     } catch (error: any) {
-      console.error('[Redis] Error checking existence:', error.message);
+      console.error("[Redis] Error checking existence:", error.message);
       return false;
     }
   }
@@ -87,31 +87,32 @@ export class RedisManager {
     expiredKeys: number;
   }> {
     try {
-      const memInfo = await this.redis.info('memory');
-      const statsInfo = await this.redis.info('stats');
+      const memInfo = await this.redis.info("memory");
+      const statsInfo = await this.redis.info("stats");
 
-      const memLines = memInfo.split('\r\n');
-      const statsLines = statsInfo.split('\r\n');
+      const memLines = memInfo.split("\r\n");
+      const statsLines = statsInfo.split("\r\n");
 
       const getVal = (lines: string[], key: string) => {
-        const line = lines.find(l => l.startsWith(key));
-        return line ? line.split(':')[1] : '0';
+        const line = lines.find((l) => l.startsWith(key));
+        return line ? line.split(":")[1] : "0";
       };
 
-      const usedBytes = parseInt(getVal(memLines, 'used_memory') || '0');
-      const maxBytes = parseInt(getVal(memLines, 'maxmemory') || '0');
-      const evictedKeys = parseInt(getVal(statsLines, 'evicted_keys') || '0');
-      const expiredKeys = parseInt(getVal(statsLines, 'expired_keys') || '0');
+      const usedBytes = parseInt(getVal(memLines, "used_memory") || "0");
+      const maxBytes = parseInt(getVal(memLines, "maxmemory") || "0");
+      const evictedKeys = parseInt(getVal(statsLines, "evicted_keys") || "0");
+      const expiredKeys = parseInt(getVal(statsLines, "expired_keys") || "0");
 
       return {
         usedMemory: `${(usedBytes / 1024 / 1024).toFixed(2)} MB`,
         maxMemory: `${(maxBytes / 1024 / 1024).toFixed(2)} MB`,
-        usedPercent: maxBytes > 0 ? Math.round((usedBytes / maxBytes) * 100) : undefined,
+        usedPercent:
+          maxBytes > 0 ? Math.round((usedBytes / maxBytes) * 100) : undefined,
         evictedKeys,
         expiredKeys,
       };
     } catch (error: any) {
-      console.error('[Redis] Error getting memory stats:', error.message);
+      console.error("[Redis] Error getting memory stats:", error.message);
       throw error;
     }
   }

@@ -1,5 +1,5 @@
-import { Sandbox } from '@e2b/code-interpreter';
-import 'dotenv/config';
+import { Sandbox } from "@e2b/code-interpreter";
+import "dotenv/config";
 
 export class SandboxManager {
   private sandboxes = new Map<string, Sandbox>();
@@ -10,7 +10,7 @@ export class SandboxManager {
 
     // Validate required environment variables
     if (!process.env.E2B_API_KEY) {
-      throw new Error('E2B_API_KEY is not set in environment variables');
+      throw new Error("E2B_API_KEY is not set in environment variables");
     }
 
     // Create sandbox without template (uses default E2B environment)
@@ -20,7 +20,7 @@ export class SandboxManager {
     });
 
     console.log(`Sandbox created with ID: ${sandbox.sandboxId}`);
-    console.log('Sandbox ready');
+    console.log("Sandbox ready");
 
     // Store sandbox reference
     this.sandboxes.set(projectId, sandbox);

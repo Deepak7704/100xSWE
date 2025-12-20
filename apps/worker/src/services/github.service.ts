@@ -1,4 +1,4 @@
-import { GitHubHelper } from '../lib/github_helper';
+import { GitHubHelper } from "../lib/github_helper";
 
 export class GitHubService {
   private githubHelper: GitHubHelper;
@@ -7,7 +7,10 @@ export class GitHubService {
     this.githubHelper = new GitHubHelper(githubToken);
   }
 
-  async ensureFork(repoUrl: string, accountOwner: string): Promise<{ forkUrl: string; forkOwner: string }> {
+  async ensureFork(
+    repoUrl: string,
+    accountOwner: string
+  ): Promise<{ forkUrl: string; forkOwner: string }> {
     const { owner, repo } = this.githubHelper.parseGitHubUrl(repoUrl);
     let forkInfo = await this.githubHelper.getFork(owner, repo, accountOwner);
 
@@ -15,13 +18,13 @@ export class GitHubService {
       const newFork = await this.githubHelper.forkRepository(owner, repo);
       return {
         forkUrl: newFork.cloneUrl,
-        forkOwner: newFork.forkOwner
+        forkOwner: newFork.forkOwner,
       };
     }
 
     return {
       forkUrl: forkInfo.cloneUrl!,
-      forkOwner: forkInfo.forkOwner!
+      forkOwner: forkInfo.forkOwner!,
     };
   }
 
@@ -32,7 +35,8 @@ export class GitHubService {
     task: string,
     explanation: string
   ): Promise<{ number: number; url: string }> {
-    const { owner: originalOwner, repo: originalRepo } = this.githubHelper.parseGitHubUrl(repoUrl);
+    const { owner: originalOwner, repo: originalRepo } =
+      this.githubHelper.parseGitHubUrl(repoUrl);
 
     return await this.githubHelper.createPullRequest(
       originalOwner,

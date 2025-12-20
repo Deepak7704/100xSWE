@@ -20,8 +20,15 @@ const progressSteps = [
   { progress: 10, message: "Creating isolated E2B sandbox environment..." },
   { progress: 20, message: "Cloning repository and setting up workspace..." },
   { progress: 30, message: "Detecting package manager and dependencies..." },
-  { progress: 40, message: "Searching for relevant files using hybrid search (BM25 + Vector)..." },
-  { progress: 50, message: "Building code graph and analyzing dependencies..." },
+  {
+    progress: 40,
+    message:
+      "Searching for relevant files using hybrid search (BM25 + Vector)...",
+  },
+  {
+    progress: 50,
+    message: "Building code graph and analyzing dependencies...",
+  },
   { progress: 60, message: "Selecting files to modify based on your task..." },
   { progress: 70, message: "Generating code changes with AI..." },
   { progress: 80, message: "Running validation checks (syntax, types)..." },
@@ -57,14 +64,14 @@ const E2BSandbox = ({ jobId, token }: SandboxProps) => {
   useEffect(() => {
     if (!jobId || !token) return;
 
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
-    let intervalId: NodeJS.Timeout;
+    const backendUrl =
+      process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
     const fetchJobStatus = async () => {
       try {
         const response = await fetch(`${backendUrl}/api/status/${jobId}`, {
           headers: {
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
           },
         });
         if (!response.ok) return;
@@ -78,7 +85,10 @@ const E2BSandbox = ({ jobId, token }: SandboxProps) => {
 
         // Add new log entries based on progress milestones
         progressSteps.forEach((step) => {
-          if (progress >= step.progress && lastProgressRef.current < step.progress) {
+          if (
+            progress >= step.progress &&
+            lastProgressRef.current < step.progress
+          ) {
             setLogs((prevLogs) => [
               ...prevLogs,
               {
@@ -93,7 +103,7 @@ const E2BSandbox = ({ jobId, token }: SandboxProps) => {
         lastProgressRef.current = progress;
 
         // Add completion or error log (only once)
-        if (state === 'completed' && progress === 100) {
+        if (state === "completed" && progress === 100) {
           if (data.result?.prUrl && !prUrlAddedRef.current) {
             prUrlAddedRef.current = true;
             setLogs((prevLogs) => [
@@ -107,14 +117,14 @@ const E2BSandbox = ({ jobId, token }: SandboxProps) => {
           }
           // Stop polling once completed
           clearInterval(intervalId);
-        } else if (state === 'failed') {
+        } else if (state === "failed") {
           if (!errorAddedRef.current) {
             errorAddedRef.current = true;
             setLogs((prevLogs) => [
               ...prevLogs,
               {
                 type: "error",
-                content: `✗ Job failed: ${data.result?.error || 'Unknown error'}`,
+                content: `✗ Job failed: ${data.result?.error || "Unknown error"}`,
                 timestamp: new Date(),
               },
             ]);
@@ -131,7 +141,7 @@ const E2BSandbox = ({ jobId, token }: SandboxProps) => {
     fetchJobStatus();
 
     // Poll every 2 seconds
-    intervalId = setInterval(fetchJobStatus, 2000);
+    const intervalId = setInterval(fetchJobStatus, 2000);
 
     return () => {
       if (intervalId) {
@@ -149,22 +159,24 @@ const E2BSandbox = ({ jobId, token }: SandboxProps) => {
             <p className="text-sm font-mono">E2B Sandbox Terminal</p>
           </div>
           <div className="flex items-center gap-2">
-            {jobState === 'active' && (
+            {jobState === "active" && (
               <>
                 <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                <span className="text-xs text-muted-foreground">Progress: {currentProgress}%</span>
+                <span className="text-xs text-muted-foreground">
+                  Progress: {currentProgress}%
+                </span>
               </>
             )}
-            {jobState === 'completed' && (
+            {jobState === "completed" && (
               <>
                 <CheckCircle2 className="w-4 h-4 text-green-600" />
                 <span className="text-xs text-green-600">Completed</span>
               </>
             )}
-            {jobState === 'failed' && (
+            {jobState === "failed" && (
               <span className="text-xs text-red-600">Failed</span>
             )}
-            {jobState === 'waiting' && (
+            {jobState === "waiting" && (
               <span className="text-xs text-muted-foreground">Waiting...</span>
             )}
           </div>
@@ -174,17 +186,16 @@ const E2BSandbox = ({ jobId, token }: SandboxProps) => {
             {logs.map((log, idx) => (
               <div
                 key={idx}
-                className={`flex items-start gap-2 ${
-                  log.type === "error"
-                    ? "text-red-600"
-                    : log.type === "success"
+                className={`flex items-start gap-2 ${log.type === "error"
+                  ? "text-red-600"
+                  : log.type === "success"
                     ? "text-green-600 font-semibold"
                     : log.type === "command"
-                    ? "text-blue-600"
-                    : log.type === "info"
-                    ? "text-purple-600"
-                    : "text-foreground"
-                }`}
+                      ? "text-blue-600"
+                      : log.type === "info"
+                        ? "text-purple-600"
+                        : "text-foreground"
+                  }`}
               >
                 <span className="text-muted-foreground text-xs min-w-[70px]">
                   {log.timestamp.toLocaleTimeString()}
@@ -192,19 +203,21 @@ const E2BSandbox = ({ jobId, token }: SandboxProps) => {
                 <span className="flex-1">{log.content}</span>
               </div>
             ))}
-            {jobState === 'active' && (
+            {jobState === "active" && (
               <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-blue-800 text-xs flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <div>
-                  <strong>Active:</strong> Sandbox is running and will remain available for 30 minutes after completion.
+                  <strong>Active:</strong> Sandbox is running and will remain
+                  available for 30 minutes after completion.
                 </div>
               </div>
             )}
-            {jobState === 'completed' && (
+            {jobState === "completed" && (
               <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded text-green-800 text-xs flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4" />
                 <div>
-                  <strong>Complete:</strong> Sandbox will remain active for 30 minutes for review and testing.
+                  <strong>Complete:</strong> Sandbox will remain active for 30
+                  minutes for review and testing.
                 </div>
               </div>
             )}

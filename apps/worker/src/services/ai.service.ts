@@ -1,11 +1,11 @@
-import { Sandbox } from '@e2b/code-interpreter';
-import { generateObject, generateText } from 'ai';
-import type { Redis } from 'ioredis';
-import gemini from '../lib/ai_config';
-import { GenerationSchema, type GenerateOutput } from '@openswe/shared';
-import { createFileSearchGraph } from '../workflows/file_search';
-import { extractKeywords } from '../utils/helpers';
-import { HybridSearchService } from './hybrid-search.service';
+import { Sandbox } from "@e2b/code-interpreter";
+import { generateObject, generateText } from "ai";
+import type { Redis } from "ioredis";
+import gemini from "../lib/ai_config";
+import { GenerationSchema, type GenerateOutput } from "@openswe/shared";
+import { createFileSearchGraph } from "../workflows/file_search";
+import { extractKeywords } from "../utils/helpers";
+import { HybridSearchService } from "./hybrid-search.service";
 
 export class AIService {
   async findRelevantFiles(
@@ -13,7 +13,7 @@ export class AIService {
     repoPath: string,
     userPrompt: string
   ): Promise<string[]> {
-    console.log('Finding relevant files using LangGraph');
+    console.log("Finding relevant files using LangGraph");
     const searchGraph = createFileSearchGraph();
 
     const searchResult = await searchGraph.invoke({
@@ -22,7 +22,7 @@ export class AIService {
       repoDirectoryPath: repoPath,
       foundfiles: [],
       selectedTool: "grep",
-      searchQuery: ""
+      searchQuery: "",
     });
 
     const relevantFiles = searchResult.foundfiles;
@@ -37,23 +37,25 @@ export class AIService {
     userPrompt: string,
     topK: number = 20
   ): Promise<string[]> {
-    console.log('Finding relevant files using Hybrid Search (BM25 + Vector)');
+    console.log("Finding relevant files using Hybrid Search (BM25 + Vector)");
 
     const hybridSearch = new HybridSearchService(redis, repoId);
     await hybridSearch.initialize();
 
-    const results = await hybridSearch.search(userPrompt, topK, 'rrf');
+    const results = await hybridSearch.search(userPrompt, topK, "rrf");
 
     const relevantFiles = hybridSearch.getUniqueFiles(results);
 
-    console.log(`Found ${relevantFiles.length} relevant files via Hybrid Search`);
+    console.log(
+      `Found ${relevantFiles.length} relevant files via Hybrid Search`
+    );
 
     const grouped = hybridSearch.groupByFile(results);
-    console.log('\nRelevant chunks per file:');
+    console.log("\nRelevant chunks per file:");
     grouped.forEach((chunks, filePath) => {
       console.log(`  ${filePath}: ${chunks.length} chunk(s)`);
     });
-    console.log('');
+    console.log("");
 
     return relevantFiles;
   }
@@ -61,11 +63,11 @@ export class AIService {
   async searchFilesByContent(
     sandbox: Sandbox,
     keywords: string[],
-    directory: string = '/home/user/project'
+    directory: string = "/home/user/project"
   ): Promise<string[]> {
-    console.log(`\nSearching for keywords: ${keywords.join(', ')}`);
+    console.log(`\nSearching for keywords: ${keywords.join(", ")}`);
 
-    const pattern = keywords.join('\\|');
+    const pattern = keywords.join("\\|");
     const grepCmd = `grep -rl "${pattern}" ${directory} \
             --exclude-dir=node_modules \
             --exclude-dir=.git \
@@ -79,8 +81,8 @@ export class AIService {
     const result = await sandbox.commands.run(grepCmd, { timeoutMs: 30000 });
 
     const files = result.stdout
-      .split('\n')
-      .filter(path => path.trim() !== '')
+      .split("\n")
+      .filter((path) => path.trim() !== "")
       .slice(0, 20);
 
     console.log(`\nFound ${files.length} matching files:`);
@@ -89,9 +91,9 @@ export class AIService {
         console.log(`  ${index + 1}. ${file}`);
       });
     } else {
-      console.log('  No files found matching keywords');
+      console.log("  No files found matching keywords");
     }
-    console.log('');
+    console.log("");
 
     return files;
   }
@@ -100,14 +102,16 @@ export class AIService {
     sandbox: Sandbox,
     userPrompt: string,
     candidateFiles: string[],
-    repoPath: string = '/home/user/project'
+    repoPath: string = "/home/user/project"
   ): Promise<string[]> {
-    console.log(`\nUsing LLM to analyze ${candidateFiles.length} candidate files...`);
+    console.log(
+      `\nUsing LLM to analyze ${candidateFiles.length} candidate files...`
+    );
 
     const fileContents = new Map<string, string>();
     for (const filePath of candidateFiles) {
       try {
-        const absolutePath = filePath.startsWith('/')
+        const absolutePath = filePath.startsWith("/")
           ? filePath
           : `${repoPath}/${filePath}`;
 
@@ -115,11 +119,14 @@ export class AIService {
         fileContents.set(absolutePath, content);
         console.log(`   Read ${filePath} (${content.length} chars)`);
       } catch (error) {
-        console.error(`   Failed to read ${filePath}:`, (error as Error).message);
+        console.error(
+          `   Failed to read ${filePath}:`,
+          (error as Error).message
+        );
       }
     }
 
-    let filesSection = '';
+    let filesSection = "";
     fileContents.forEach((content, path) => {
       filesSection += `\n### FILE: ${path}\n\`\`\`\n${content}\n\`\`\`\n\n`;
     });
@@ -146,7 +153,7 @@ export class AIService {
     /home/user/project/main.py
     /home/user/project/unknow.py`;
 
-    console.log('\nSending to LLM for analysis...');
+    console.log("\nSending to LLM for analysis...");
 
     const { text } = await generateText({
       model: gemini,
@@ -156,32 +163,32 @@ export class AIService {
 
     const selectedFiles = text
       .trim()
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0 && line.startsWith('/'));
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0 && line.startsWith("/"));
 
     console.log(`\nLLM Selected ${selectedFiles.length} file(s):`);
     selectedFiles.forEach((file, index) => {
       console.log(`  ${index + 1}. ${file}`);
     });
-    console.log('');
+    console.log("");
 
     return selectedFiles;
   }
 
   async selectFilesToModifyWithSkeletons(
-  userPrompt: string,
-  skeletons: Map<string, string>,
-  repoPath: string
-): Promise<string[]> {
-  console.log(`\nAnalyzing ${skeletons.size} files using code skeletons...`);
+    userPrompt: string,
+    skeletons: Map<string, string>,
+    repoPath: string
+  ): Promise<string[]> {
+    console.log(`\nAnalyzing ${skeletons.size} files using code skeletons...`);
 
-  let skeletonsSection = '';
-  skeletons.forEach((skeleton, path) => {
-    skeletonsSection += `\n${skeleton}\n`;
-  });
+    let skeletonsSection = "";
+    skeletons.forEach((skeleton, path) => {
+      skeletonsSection += `\n${skeleton}\n`;
+    });
 
-  const llmPrompt = `You are a code analysis expert. Your task is to identify which files need modification based on a user's request.
+    const llmPrompt = `You are a code analysis expert. Your task is to identify which files need modification based on a user's request.
 
 USER REQUEST:
 ${userPrompt}
@@ -209,84 +216,85 @@ EXAMPLE OUTPUT:
 
 YOUR OUTPUT (file paths only):`;
 
-  console.log('\nSending skeletons to LLM for analysis...');
-  
-  const { text } = await generateText({
-    model: gemini,
-    prompt: llmPrompt,
-    maxOutputTokens: 500,
-  });
+    console.log("\nSending skeletons to LLM for analysis...");
 
-  console.log('\n--- RAW LLM RESPONSE ---');
-  console.log(text);
-  console.log('--- END RESPONSE ---\n');
-
-  const lines = text.trim().split('\n');
-  const selectedFiles: string[] = [];
-
-  for (const line of lines) {
-    let trimmed = line.trim();
-
-    if (!trimmed) continue;
-
-    if (trimmed.startsWith('#') || trimmed.startsWith('**')) continue;
-
-    trimmed = trimmed.replace(/^[-*•\d.)\]]+\s*/, '');
-
-    trimmed = trimmed.replace(/^`+|`+$/g, '');
-
-    trimmed = trimmed.replace(/^["']|["']$/g, '');
-
-    trimmed = trimmed.trim();
-
-    const hasPathSeparator = trimmed.includes('/');
-    const hasValidExtension = /\.(tsx?|jsx?|py|java|go|rs|cpp|c|h|vue|svelte)$/i.test(trimmed);
-
-    if (!hasPathSeparator || !hasValidExtension) continue;
-
-    let filePath = trimmed;
-
-    if (!filePath.startsWith('/')) {
-      if (filePath.startsWith('src/') && repoPath.endsWith('/project')) {
-        filePath = `${repoPath}/${filePath}`;
-      } else {
-        filePath = `${repoPath}/${filePath}`;
-      }
-    }
-
-    if (filePath.startsWith('/home/user/project/')) {
-      if (!selectedFiles.includes(filePath)) {
-        selectedFiles.push(filePath);
-      }
-    }
-  }
-
-  console.log(`\nLLM Selected ${selectedFiles.length} file(s):`);
-  if (selectedFiles.length > 0) {
-    selectedFiles.forEach((file, index) => {
-      console.log(`  ${index + 1}. ${file}`);
+    const { text } = await generateText({
+      model: gemini,
+      prompt: llmPrompt,
+      maxOutputTokens: 500,
     });
-  } else {
-    console.warn('\nWARNING: LLM selected 0 files from code skeletons!');
-    console.warn('Available files in skeletons:');
-    let count = 0;
-    for (const [path] of skeletons) {
-      console.warn(`  ${count + 1}. ${path}`);
-      count++;
-      if (count >= 5) {
-        console.warn(`  ... and ${skeletons.size - count} more`);
-        break;
+
+    console.log("\n--- RAW LLM RESPONSE ---");
+    console.log(text);
+    console.log("--- END RESPONSE ---\n");
+
+    const lines = text.trim().split("\n");
+    const selectedFiles: string[] = [];
+
+    for (const line of lines) {
+      let trimmed = line.trim();
+
+      if (!trimmed) continue;
+
+      if (trimmed.startsWith("#") || trimmed.startsWith("**")) continue;
+
+      trimmed = trimmed.replace(/^[-*•\d.)\]]+\s*/, "");
+
+      trimmed = trimmed.replace(/^`+|`+$/g, "");
+
+      trimmed = trimmed.replace(/^["']|["']$/g, "");
+
+      trimmed = trimmed.trim();
+
+      const hasPathSeparator = trimmed.includes("/");
+      const hasValidExtension =
+        /\.(tsx?|jsx?|py|java|go|rs|cpp|c|h|vue|svelte)$/i.test(trimmed);
+
+      if (!hasPathSeparator || !hasValidExtension) continue;
+
+      let filePath = trimmed;
+
+      if (!filePath.startsWith("/")) {
+        if (filePath.startsWith("src/") && repoPath.endsWith("/project")) {
+          filePath = `${repoPath}/${filePath}`;
+        } else {
+          filePath = `${repoPath}/${filePath}`;
+        }
+      }
+
+      if (filePath.startsWith("/home/user/project/")) {
+        if (!selectedFiles.includes(filePath)) {
+          selectedFiles.push(filePath);
+        }
       }
     }
-    console.warn('\nPossible reasons:');
-    console.warn('1. LLM output format doesn\'t match expected format');
-    console.warn('2. No files are relevant to the user request');
-    console.warn('3. Parsing logic needs adjustment');
-    console.warn('\nFallback will use hybrid search ranking instead\n');
-  }
 
-  return selectedFiles;
-}
+    console.log(`\nLLM Selected ${selectedFiles.length} file(s):`);
+    if (selectedFiles.length > 0) {
+      selectedFiles.forEach((file, index) => {
+        console.log(`  ${index + 1}. ${file}`);
+      });
+    } else {
+      console.warn("\nWARNING: LLM selected 0 files from code skeletons!");
+      console.warn("Available files in skeletons:");
+      let count = 0;
+      for (const [path] of skeletons) {
+        console.warn(`  ${count + 1}. ${path}`);
+        count++;
+        if (count >= 5) {
+          console.warn(`  ... and ${skeletons.size - count} more`);
+          break;
+        }
+      }
+      console.warn("\nPossible reasons:");
+      console.warn("1. LLM output format doesn't match expected format");
+      console.warn("2. No files are relevant to the user request");
+      console.warn("3. Parsing logic needs adjustment");
+      console.warn("\nFallback will use hybrid search ranking instead\n");
+    }
+
+    return selectedFiles;
+  }
 
   async generateCodeChanges(
     repoUrl: string,
@@ -295,10 +303,10 @@ YOUR OUTPUT (file paths only):`;
     relevantFiles: string[],
     allFiles: string[],
     keywords: string[],
-    packageManager: string = 'npm',
-    skeletons?: Map<string, string>,  // Optional code skeletons for context
-    previousErrors?: string[],  // Optional: errors from previous validation attempt
-    newFiles?: string[]  // Optional: list of files that don't exist yet (to be created)
+    packageManager: string = "npm",
+    skeletons?: Map<string, string>, // Optional code skeletons for context
+    previousErrors?: string[], // Optional: errors from previous validation attempt
+    newFiles?: string[] // Optional: list of files that don't exist yet (to be created)
   ): Promise<GenerateOutput> {
     const prompt = this.buildPrompt(
       repoUrl,
@@ -313,7 +321,7 @@ YOUR OUTPUT (file paths only):`;
       newFiles
     );
 
-    console.log('Calling generateObject with schema...');
+    console.log("Calling generateObject with schema...");
     const startTime = Date.now();
 
     const result = await generateObject({
@@ -326,11 +334,11 @@ YOUR OUTPUT (file paths only):`;
     console.log(`generateObject finished in ${duration}ms`);
 
     if (!result.object) {
-      console.error('object is undefined');
-      throw new Error('Generation failed - object is undefined');
+      console.error("object is undefined");
+      throw new Error("Generation failed - object is undefined");
     }
 
-    console.log('Successfully got generation object');
+    console.log("Successfully got generation object");
     return result.object as GenerateOutput;
   }
 
@@ -346,26 +354,30 @@ YOUR OUTPUT (file paths only):`;
     previousErrors?: string[],
     newFiles?: string[]
   ): string {
-    let filesToModifySection = '';
+    let filesToModifySection = "";
     fileContents.forEach((content, path) => {
       filesToModifySection += `\n=== FILE: ${path} ===\n\`\`\`\n${content}\n\`\`\`\n\n`;
     });
 
-    let newFilesSection = '';
+    let newFilesSection = "";
     if (newFiles && newFiles.length > 0) {
-      newFilesSection = '\n=== NEW FILES TO CREATE ===\n';
-      newFilesSection += 'The following files do not exist yet and should be created:\n\n';
+      newFilesSection = "\n=== NEW FILES TO CREATE ===\n";
+      newFilesSection +=
+        "The following files do not exist yet and should be created:\n\n";
       newFiles.forEach((path, idx) => {
         newFilesSection += `  ${idx + 1}. ${path}\n`;
       });
-      newFilesSection += '\nIMPORTANT: For these files, use type: "createFile" with complete file content.\n';
-      newFilesSection += 'These are NEW files - do not attempt to use "updateFile" or "rewriteFile".\n';
+      newFilesSection +=
+        '\nIMPORTANT: For these files, use type: "createFile" with complete file content.\n';
+      newFilesSection +=
+        'These are NEW files - do not attempt to use "updateFile" or "rewriteFile".\n';
     }
 
-    let contextSection = '';
+    let contextSection = "";
     if (skeletons && skeletons.size > 0) {
-      contextSection = '\n=== CONTEXT: Related Files (Code Skeletons) ===\n';
-      contextSection += 'These are structural summaries of related files to help you understand the codebase:\n\n';
+      contextSection = "\n=== CONTEXT: Related Files (Code Skeletons) ===\n";
+      contextSection +=
+        "These are structural summaries of related files to help you understand the codebase:\n\n";
 
       skeletons.forEach((skeleton, path) => {
         if (!fileContents.has(path)) {
@@ -374,18 +386,21 @@ YOUR OUTPUT (file paths only):`;
       });
     }
 
-    const candidatesList = candidateFiles.map((f, i) => `  ${i + 1}. ${f}`).join('\n');
-    const fileTreeSection = allFiles.slice(0, 100).join('\n');
-    const packageManagerInstructions = this.getPackageManagerInstructions(packageManager);
+    const candidatesList = candidateFiles
+      .map((f, i) => `  ${i + 1}. ${f}`)
+      .join("\n");
+    const fileTreeSection = allFiles.slice(0, 100).join("\n");
+    const packageManagerInstructions =
+      this.getPackageManagerInstructions(packageManager);
 
-    let errorSection = '';
+    let errorSection = "";
     if (previousErrors && previousErrors.length > 0) {
       errorSection = `
 CRITICAL: PREVIOUS CODE HAD VALIDATION ERRORS - MUST FIX
 
 The previous code generation had the following validation errors:
 
-${previousErrors.map((error, idx) => `${idx + 1}. ${error}`).join('\n')}
+${previousErrors.map((error, idx) => `${idx + 1}. ${error}`).join("\n")}
 
 MANDATORY REQUIREMENTS:
 1. You MUST fix ALL these errors in the new code
@@ -400,7 +415,7 @@ MANDATORY REQUIREMENTS:
 ${errorSection}
 REPOSITORY: ${repoUrl}
 USER REQUEST: ${task}
-SEARCH KEYWORDS: ${keywords.join(', ')}
+SEARCH KEYWORDS: ${keywords.join(", ")}
 PACKAGE MANAGER: ${packageManager}
 
 === FILES TO MODIFY (Full Content) ===
@@ -555,16 +570,19 @@ Remember:
   }
 
   private getPackageManagerInstructions(packageManager: string): string {
-    const defaultInstruction = '- Example: ["npm install lodash"] for adding dependencies';
-    
+    const defaultInstruction =
+      '- Example: ["npm install lodash"] for adding dependencies';
+
     const instructions: Record<string, string> = {
-      'npm': defaultInstruction,
-      'pnpm': '- IMPORTANT: Use "pnpm add <package>" NOT "npm install".\n  - Example: ["pnpm add lodash"]',
-      'yarn': '- IMPORTANT: Use "yarn add <package>" NOT "npm install".\n  - Example: ["yarn add lodash"]',
-      'pip': '- IMPORTANT: Use "pip install <package>" for Python dependencies.\n  - Example: ["pip install requests"]',
-      'cargo': '- IMPORTANT: Use "cargo add <package>" for Rust dependencies.\n  - Example: ["cargo add serde"]',
-      'go': '- IMPORTANT: Use "go get <package>" for Go dependencies.\n  - Example: ["go get github.com/gin-gonic/gin"]',
-      'bundler': '- IMPORTANT: Use "bundle add <gem>" for Ruby dependencies.\n  - Example: ["bundle add rails"]',
+      npm: defaultInstruction,
+      pnpm: '- IMPORTANT: Use "pnpm add <package>" NOT "npm install".\n  - Example: ["pnpm add lodash"]',
+      yarn: '- IMPORTANT: Use "yarn add <package>" NOT "npm install".\n  - Example: ["yarn add lodash"]',
+      pip: '- IMPORTANT: Use "pip install <package>" for Python dependencies.\n  - Example: ["pip install requests"]',
+      cargo:
+        '- IMPORTANT: Use "cargo add <package>" for Rust dependencies.\n  - Example: ["cargo add serde"]',
+      go: '- IMPORTANT: Use "go get <package>" for Go dependencies.\n  - Example: ["go get github.com/gin-gonic/gin"]',
+      bundler:
+        '- IMPORTANT: Use "bundle add <gem>" for Ruby dependencies.\n  - Example: ["bundle add rails"]',
     };
 
     return instructions[packageManager] || defaultInstruction;

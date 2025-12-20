@@ -10,7 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 function ChatContent() {
   const searchParams = useSearchParams();
-  const jobId = searchParams.get('jobId');
+  const jobId = searchParams.get("jobId");
   const { token } = useAuth();
   const { status, error, isLoading } = useJobStatus(jobId, token);
 
@@ -21,7 +21,9 @@ function ChatContent() {
   if (!jobId) {
     return (
       <div className="h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">No job ID provided. Please submit a task from the dashboard.</p>
+        <p className="text-muted-foreground">
+          No job ID provided. Please submit a task from the dashboard.
+        </p>
       </div>
     );
   }
@@ -36,15 +38,11 @@ function ChatContent() {
 
   return (
     <div className="h-screen bg-background flex flex-col md:flex-row overflow-hidden">
-      <ChatSidebar
-        messages={messages}
-        jobId={jobId}
-        isLoading={isLoading}
-      />
+      <ChatSidebar messages={messages} jobId={jobId} isLoading={isLoading} />
       <CodeWorkspace
         jobId={jobId}
         status={status}
-        isCompleted={status?.state === 'completed'}
+        isCompleted={status?.state === "completed"}
         prUrl={status?.result?.prUrl}
         token={token}
       />
@@ -54,11 +52,13 @@ function ChatContent() {
 
 export default function ChatPage() {
   return (
-    <Suspense fallback={
-      <div className="h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="h-screen bg-background flex items-center justify-center">
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      }
+    >
       <ChatContent />
     </Suspense>
   );

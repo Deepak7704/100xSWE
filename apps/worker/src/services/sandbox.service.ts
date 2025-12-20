@@ -1,6 +1,6 @@
-import { Sandbox } from '@e2b/code-interpreter';
-import { SandboxManager } from '../lib/sandbox_manager';
-import type { FileOperation } from '@openswe/shared';
+import { Sandbox } from "@e2b/code-interpreter";
+import { SandboxManager } from "../lib/sandbox_manager";
+import type { FileOperation } from "@openswe/shared";
 
 export class SandboxService {
   private sandboxManager: SandboxManager;
@@ -19,36 +19,45 @@ export class SandboxService {
     return sandbox;
   }
 
-  async getFileTree(sandbox: Sandbox, dir: string = '/home/user/project'): Promise<string[]> {
+  async getFileTree(
+    sandbox: Sandbox,
+    dir: string = "/home/user/project"
+  ): Promise<string[]> {
     const result = await sandbox.commands.run(
       `find ${dir} -type f -not -path "*/node_modules/*" -not -path "*/.git/*" | head -100`
     );
 
     return result.stdout
-      .split('\n')
-      .filter(p => p.trim() !== '')
-      .map(p => p.replace(`${dir}/`, ''));
+      .split("\n")
+      .filter((p) => p.trim() !== "")
+      .map((p) => p.replace(`${dir}/`, ""));
   }
 
   async getFileContents(
     sandbox: Sandbox,
     filePaths: string[],
     maxLines: number = 100,
-    repoPath: string = '/home/user/project'
+    repoPath: string = "/home/user/project"
   ): Promise<Map<string, string>> {
-    const limitMsg = maxLines === Infinity ? 'no line limit' : `max ${maxLines} lines`;
-    console.log(`\nReading contents of ${filePaths.length} files (${limitMsg}):`);
+    const limitMsg =
+      maxLines === Infinity ? "no line limit" : `max ${maxLines} lines`;
+    console.log(
+      `\nReading contents of ${filePaths.length} files (${limitMsg}):`
+    );
     const contents = new Map<string, string>();
 
     for (const path of filePaths) {
       try {
-        const absolutePath = path.startsWith('/')
+        const absolutePath = path.startsWith("/")
           ? path
           : `${repoPath}/${path}`;
 
         const fullContent = await this.readFile(sandbox, absolutePath);
-        const lines = fullContent.split('\n');
-        const truncated = maxLines === Infinity ? fullContent : lines.slice(0, maxLines).join('\n');
+        const lines = fullContent.split("\n");
+        const truncated =
+          maxLines === Infinity
+            ? fullContent
+            : lines.slice(0, maxLines).join("\n");
         const wasTruncated = lines.length > maxLines && maxLines !== Infinity;
 
         contents.set(absolutePath, truncated);
@@ -68,16 +77,14 @@ export class SandboxService {
   async separateExistingAndNewFiles(
     sandbox: Sandbox,
     filePaths: string[],
-    repoPath: string = '/home/user/project'
+    repoPath: string = "/home/user/project"
   ): Promise<{ existingFiles: string[]; newFiles: string[] }> {
     console.log(`\nChecking file existence for ${filePaths.length} file(s)...`);
     const existingFiles: string[] = [];
     const newFiles: string[] = [];
 
     for (const path of filePaths) {
-      const absolutePath = path.startsWith('/')
-        ? path
-        : `${repoPath}/${path}`;
+      const absolutePath = path.startsWith("/") ? path : `${repoPath}/${path}`;
 
       const exists = await this.fileExists(sandbox, absolutePath);
       if (exists) {
@@ -92,7 +99,7 @@ export class SandboxService {
     console.log(`\nSummary:`);
     console.log(`  Existing files to modify: ${existingFiles.length}`);
     console.log(`  New files to create: ${newFiles.length}`);
-    console.log('');
+    console.log("");
 
     return { existingFiles, newFiles };
   }
@@ -107,61 +114,89 @@ export class SandboxService {
         ? operation.path
         : `${repoPath}/${operation.path}`;
 
-      await this.executeFileOperation(sandbox, { ...operation, path: fullPath });
+      await this.executeFileOperation(sandbox, {
+        ...operation,
+        path: fullPath,
+      });
     }
   }
 
-  async detectPackageManager(sandbox: Sandbox, repoPath: string): Promise<string> {
+  async detectPackageManager(
+    sandbox: Sandbox,
+    repoPath: string
+  ): Promise<string> {
     try {
-      const pnpmCheck = await sandbox.commands.run(`[ -f ${repoPath}/pnpm-lock.yaml ] && echo "exists" || echo "not found"`);
-      if (pnpmCheck.stdout.trim() === 'exists') {
-        return 'pnpm';
+      const pnpmCheck = await sandbox.commands.run(
+        `[ -f ${repoPath}/pnpm-lock.yaml ] && echo "exists" || echo "not found"`
+      );
+      if (pnpmCheck.stdout.trim() === "exists") {
+        return "pnpm";
       }
 
-      const yarnCheck = await sandbox.commands.run(`[ -f ${repoPath}/yarn.lock ] && echo "exists" || echo "not found"`);
-      if (yarnCheck.stdout.trim() === 'exists') {
-        return 'yarn';
+      const yarnCheck = await sandbox.commands.run(
+        `[ -f ${repoPath}/yarn.lock ] && echo "exists" || echo "not found"`
+      );
+      if (yarnCheck.stdout.trim() === "exists") {
+        return "yarn";
       }
 
-      const npmCheck = await sandbox.commands.run(`[ -f ${repoPath}/package-lock.json ] && echo "exists" || echo "not found"`);
-      if (npmCheck.stdout.trim() === 'exists') {
-        return 'npm';
+      const npmCheck = await sandbox.commands.run(
+        `[ -f ${repoPath}/package-lock.json ] && echo "exists" || echo "not found"`
+      );
+      if (npmCheck.stdout.trim() === "exists") {
+        return "npm";
       }
 
-      const pythonCheck = await sandbox.commands.run(`[ -f ${repoPath}/requirements.txt ] || [ -f ${repoPath}/pyproject.toml ] && echo "exists" || echo "not found"`);
-      if (pythonCheck.stdout.trim() === 'exists') {
-        return 'pip';
+      const pythonCheck = await sandbox.commands.run(
+        `[ -f ${repoPath}/requirements.txt ] || [ -f ${repoPath}/pyproject.toml ] && echo "exists" || echo "not found"`
+      );
+      if (pythonCheck.stdout.trim() === "exists") {
+        return "pip";
       }
 
-      const rubyCheck = await sandbox.commands.run(`[ -f ${repoPath}/Gemfile ] && echo "exists" || echo "not found"`);
-      if (rubyCheck.stdout.trim() === 'exists') {
-        return 'bundler';
+      const rubyCheck = await sandbox.commands.run(
+        `[ -f ${repoPath}/Gemfile ] && echo "exists" || echo "not found"`
+      );
+      if (rubyCheck.stdout.trim() === "exists") {
+        return "bundler";
       }
 
-      const rustCheck = await sandbox.commands.run(`[ -f ${repoPath}/Cargo.toml ] && echo "exists" || echo "not found"`);
-      if (rustCheck.stdout.trim() === 'exists') {
-        return 'cargo';
+      const rustCheck = await sandbox.commands.run(
+        `[ -f ${repoPath}/Cargo.toml ] && echo "exists" || echo "not found"`
+      );
+      if (rustCheck.stdout.trim() === "exists") {
+        return "cargo";
       }
 
-      const goCheck = await sandbox.commands.run(`[ -f ${repoPath}/go.mod ] && echo "exists" || echo "not found"`);
-      if (goCheck.stdout.trim() === 'exists') {
-        return 'go';
+      const goCheck = await sandbox.commands.run(
+        `[ -f ${repoPath}/go.mod ] && echo "exists" || echo "not found"`
+      );
+      if (goCheck.stdout.trim() === "exists") {
+        return "go";
       }
 
-      return 'npm';
+      return "npm";
     } catch (error) {
-      console.warn('Error detecting package manager, defaulting to npm:', error);
-      return 'npm';
+      console.warn(
+        "Error detecting package manager, defaulting to npm:",
+        error
+      );
+      return "npm";
     }
   }
 
-  private async ensurePackageManagerInstalled(sandbox: Sandbox, packageManager: string): Promise<void> {
+  private async ensurePackageManagerInstalled(
+    sandbox: Sandbox,
+    packageManager: string
+  ): Promise<void> {
     try {
       // Check if package manager is available
       const checkResult = await sandbox.commands.run(`which ${packageManager}`);
 
       if (checkResult.exitCode === 0) {
-        console.log(`  Package manager '${packageManager}' is already installed\n`);
+        console.log(
+          `  Package manager '${packageManager}' is already installed\n`
+        );
         return;
       }
     } catch (error) {
@@ -169,36 +204,55 @@ export class SandboxService {
       console.log(`  Installing ${packageManager}...`);
 
       try {
-        if (packageManager === 'pnpm') {
-          await sandbox.commands.run('npm install -g pnpm', { timeoutMs: 120000 });
+        if (packageManager === "pnpm") {
+          await sandbox.commands.run("npm install -g pnpm", {
+            timeoutMs: 120000,
+          });
           console.log(`  Successfully installed pnpm\n`);
-        } else if (packageManager === 'yarn') {
-          await sandbox.commands.run('npm install -g yarn', { timeoutMs: 120000 });
+        } else if (packageManager === "yarn") {
+          await sandbox.commands.run("npm install -g yarn", {
+            timeoutMs: 120000,
+          });
           console.log(`  Successfully installed yarn\n`);
-        } else if (packageManager === 'cargo') {
-          console.log(`  Warning: Cargo not available, skipping installation (requires Rust)\n`);
-        } else if (packageManager === 'go') {
+        } else if (packageManager === "cargo") {
+          console.log(
+            `  Warning: Cargo not available, skipping installation (requires Rust)\n`
+          );
+        } else if (packageManager === "go") {
           console.log(`  Warning: Go not available, skipping installation\n`);
         }
         // npm, pip, bundler are usually pre-installed or don't need global install
       } catch (installError) {
-        console.warn(`  Failed to install ${packageManager}: ${(installError as Error).message}`);
+        console.warn(
+          `  Failed to install ${packageManager}: ${(installError as Error).message}`
+        );
         console.log(`  Will attempt to run commands anyway...\n`);
       }
     }
   }
 
-  async runShellCommands(sandbox: Sandbox, commands: string[], repoPath: string, packageManager?: string): Promise<void> {
+  async runShellCommands(
+    sandbox: Sandbox,
+    commands: string[],
+    repoPath: string,
+    packageManager?: string
+  ): Promise<void> {
     if (commands && commands.length > 0) {
       // Ensure package manager is installed if specified
-      if (packageManager && (packageManager === 'pnpm' || packageManager === 'yarn')) {
+      if (
+        packageManager &&
+        (packageManager === "pnpm" || packageManager === "yarn")
+      ) {
         await this.ensurePackageManagerInstalled(sandbox, packageManager);
       }
 
       for (const command of commands) {
         try {
           console.log(`  Running: ${command}`);
-          const result = await sandbox.commands.run(`cd ${repoPath} && ${command}`, { timeoutMs: 180000 });
+          const result = await sandbox.commands.run(
+            `cd ${repoPath} && ${command}`,
+            { timeoutMs: 180000 }
+          );
 
           if (result.stdout) {
             console.log(`  Output: ${result.stdout.substring(0, 200)}`);
@@ -235,8 +289,12 @@ export class SandboxService {
     return await sandbox.files.read(path);
   }
 
-  private async writeFile(sandbox: Sandbox, path: string, content: string): Promise<void> {
-    const dir = path.substring(0, path.lastIndexOf('/'));
+  private async writeFile(
+    sandbox: Sandbox,
+    path: string,
+    content: string
+  ): Promise<void> {
+    const dir = path.substring(0, path.lastIndexOf("/"));
     if (dir) await sandbox.commands.run(`mkdir -p ${dir}`);
     await sandbox.files.write(path, content);
   }
@@ -245,24 +303,31 @@ export class SandboxService {
     await sandbox.commands.run(`rm -f ${path}`);
   }
 
-  private async executeFileOperation(sandbox: Sandbox, operation: FileOperation): Promise<void> {
+  private async executeFileOperation(
+    sandbox: Sandbox,
+    operation: FileOperation
+  ): Promise<void> {
     console.log(`\n  Executing operation: ${operation.type}`);
     console.log(`  Target file: ${operation.path}`);
 
     switch (operation.type) {
-      case 'createFile':
-      case 'rewriteFile':
-        console.log(`  Writing ${operation.content.length} characters to file...`);
+      case "createFile":
+      case "rewriteFile":
+        console.log(
+          `  Writing ${operation.content.length} characters to file...`
+        );
         await this.writeFile(sandbox, operation.path, operation.content);
         console.log(`  File written successfully`);
         break;
 
-      case 'updateFile':
+      case "updateFile":
         console.log(`  Reading current file content...`);
         let content = await this.readFile(sandbox, operation.path);
         const originalLength = content.length;
         console.log(`  Current file size: ${originalLength} characters`);
-        console.log(`  Number of search/replace operations: ${operation.searchReplace.length}`);
+        console.log(
+          `  Number of search/replace operations: ${operation.searchReplace.length}`
+        );
 
         let modificationsMade = false;
 
@@ -273,22 +338,32 @@ export class SandboxService {
 
           const beforeLength = content.length;
 
-          console.log(`\n  [Pattern ${i + 1}/${operation.searchReplace.length}]`);
-          console.log(`     Search: "${search.substring(0, 80)}${search.length > 80 ? '...' : ''}"`);
-          console.log(`     Replace with: "${replace.substring(0, 80)}${replace.length > 80 ? '...' : ''}"`);
+          console.log(
+            `\n  [Pattern ${i + 1}/${operation.searchReplace.length}]`
+          );
+          console.log(
+            `     Search: "${search.substring(0, 80)}${search.length > 80 ? "..." : ""}"`
+          );
+          console.log(
+            `     Replace with: "${replace.substring(0, 80)}${replace.length > 80 ? "..." : ""}"`
+          );
 
           try {
-            const regex = new RegExp(search, 'g');
+            const regex = new RegExp(search, "g");
             const matches = content.match(regex);
 
             if (matches && matches.length > 0) {
               console.log(`     Found ${matches.length} match(es) using regex`);
               content = content.replace(regex, replace);
               const afterLength = content.length;
-              console.log(`     Replaced successfully (${beforeLength} -> ${afterLength} chars)`);
+              console.log(
+                `     Replaced successfully (${beforeLength} -> ${afterLength} chars)`
+              );
               modificationsMade = true;
             } else {
-              console.log(`     No regex matches found, trying literal string search...`);
+              console.log(
+                `     No regex matches found, trying literal string search...`
+              );
 
               if (content.includes(search)) {
                 console.log(`     Found literal match!`);
@@ -296,13 +371,19 @@ export class SandboxService {
                 console.log(`     Found ${occurrences} occurrence(s)`);
                 content = content.split(search).join(replace);
                 const afterLength = content.length;
-                console.log(`     Replaced successfully (${beforeLength} -> ${afterLength} chars)`);
+                console.log(
+                  `     Replaced successfully (${beforeLength} -> ${afterLength} chars)`
+                );
                 modificationsMade = true;
               } else {
-                console.log(`     Pattern NOT found in file (neither regex nor literal)`);
+                console.log(
+                  `     Pattern NOT found in file (neither regex nor literal)`
+                );
                 console.log(`     File preview (first 200 chars):`);
                 console.log(`        "${content.substring(0, 200)}..."`);
-                console.log(`     Tip: Check for whitespace differences or escape sequences`);
+                console.log(
+                  `     Tip: Check for whitespace differences or escape sequences`
+                );
               }
             }
           } catch (error) {
@@ -314,18 +395,26 @@ export class SandboxService {
               console.log(`     Literal replacement successful`);
               modificationsMade = true;
             } else {
-              console.log(`     Literal replacement also failed - pattern not found`);
+              console.log(
+                `     Literal replacement also failed - pattern not found`
+              );
             }
           }
         }
 
         if (!modificationsMade) {
           console.log(`\n  WARNING: No modifications were made to the file!`);
-          console.log(`  The search patterns didn't match anything in the file.`);
-          console.log(`  Consider using 'rewriteFile' instead of 'updateFile'.`);
+          console.log(
+            `  The search patterns didn't match anything in the file.`
+          );
+          console.log(
+            `  Consider using 'rewriteFile' instead of 'updateFile'.`
+          );
         } else {
           console.log(`\n  Modifications applied successfully`);
-          console.log(`  Final file size: ${content.length} characters (was ${originalLength})`);
+          console.log(
+            `  Final file size: ${content.length} characters (was ${originalLength})`
+          );
         }
 
         console.log(`  Writing updated content back to file...`);
@@ -333,7 +422,7 @@ export class SandboxService {
         console.log(`  File updated successfully`);
         break;
 
-      case 'deleteFile':
+      case "deleteFile":
         console.log(`  Deleting file...`);
         await this.deleteFile(sandbox, operation.path);
         console.log(`  File deleted successfully`);

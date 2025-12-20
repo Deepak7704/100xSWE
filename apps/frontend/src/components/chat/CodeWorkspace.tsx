@@ -16,12 +16,22 @@ interface CodeWorkspaceProps {
   token: string | null;
 }
 
-const CodeWorkspace = ({ jobId, status, isCompleted, prUrl, token }: CodeWorkspaceProps) => {
+const CodeWorkspace = ({
+  jobId,
+  status,
+  isCompleted,
+  prUrl,
+  token,
+}: CodeWorkspaceProps) => {
   const [activeTab, setActiveTab] = useState("sandbox");
 
   return (
     <div className="flex-1 h-full p-4 md:p-8 bg-background flex flex-col overflow-hidden">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="flex-1 flex flex-col overflow-hidden"
+      >
         <div className="flex items-center justify-between mb-4 flex-shrink-0">
           <TabsList>
             <TabsTrigger value="sandbox">Sandbox</TabsTrigger>
@@ -34,7 +44,7 @@ const CodeWorkspace = ({ jobId, status, isCompleted, prUrl, token }: CodeWorkspa
                 variant="default"
                 size="sm"
                 className="rounded-full"
-                onClick={() => window.open(prUrl, '_blank')}
+                onClick={() => window.open(prUrl, "_blank")}
               >
                 <ExternalLink className="w-4 h-4 mr-2" />
                 View Pull Request

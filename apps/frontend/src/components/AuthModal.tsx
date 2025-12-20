@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { X, Github, Loader2, AlertCircle, CheckCircle, ExternalLink } from "lucide-react";
+import {
+  X,
+  Github,
+  Loader2,
+  AlertCircle,
+  CheckCircle,
+  ExternalLink,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { openOAuthPopup } from "@/lib/oauth-popup";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,17 +19,18 @@ interface AuthModalProps {
   onClose: () => void;
 }
 
-type Step = 'login' | 'install' | 'complete';
+type Step = "login" | "install" | "complete";
 
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
-  const [step, setStep] = useState<Step>('login');
+  const [step, setStep] = useState<Step>("login");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { login } = useAuth();
   const router = useRouter();
 
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000';
-  const githubAppName = '100xSWE';
+  const backendUrl =
+    process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3000";
+  const githubAppName = "100xSWE";
 
   const handleGitHubLogin = async () => {
     setLoading(true);
@@ -35,42 +43,53 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       // Save authentication
       login(result.token, result.user);
 
-      console.log('[AuthModal] Login successful:', result.user.username);
+      console.log("[AuthModal] Login successful:", result.user.username);
 
       // Check if THIS USER already has installations
       try {
-        const installationsResponse = await fetch(`${backendUrl}/auth/installations`, {
-          headers: {
-            'Authorization': `Bearer ${result.token}`,
-          },
-        });
+        const installationsResponse = await fetch(
+          `${backendUrl}/auth/installations`,
+          {
+            headers: {
+              Authorization: `Bearer ${result.token}`,
+            },
+          }
+        );
 
         if (!installationsResponse.ok) {
-          throw new Error('Failed to check installations');
+          throw new Error("Failed to check installations");
         }
 
         const installationsData = await installationsResponse.json();
 
-        console.log('[AuthModal] User installations:', installationsData);
+        console.log("[AuthModal] User installations:", installationsData);
 
         if (installationsData.total > 0) {
           // User already has installations, redirect to dashboard
-          console.log('[AuthModal] User already has installations, redirecting to dashboard');
-          router.push('/dashboard');
+          console.log(
+            "[AuthModal] User already has installations, redirecting to dashboard"
+          );
+          router.push("/dashboard");
           onClose();
         } else {
           // No installations, show installation step
-          console.log('[AuthModal] No installations found, showing install step');
-          setStep('install');
+          console.log(
+            "[AuthModal] No installations found, showing install step"
+          );
+          setStep("install");
         }
       } catch (err) {
-        console.error('[AuthModal] Error checking installations:', err);
+        console.error("[AuthModal] Error checking installations:", err);
         // If we can't check installations, show install step to be safe
-        setStep('install');
+        setStep("install");
       }
     } catch (err: unknown) {
-      console.error('[AuthModal] OAuth error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to authenticate with GitHub');
+      console.error("[AuthModal] OAuth error:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to authenticate with GitHub"
+      );
     } finally {
       setLoading(false);
     }
@@ -79,11 +98,15 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const handleInstallApp = () => {
     // Redirect to GitHub App installation page
     // After installation, GitHub will redirect back to our callback URL
-    const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl =
+      process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000";
     const redirectUri = `${frontendUrl}/installation/callback`;
     const installUrl = `https://github.com/apps/${githubAppName}/installations/new?state=install`;
 
-    console.log('[AuthModal] Redirecting to GitHub App installation:', installUrl);
+    console.log(
+      "[AuthModal] Redirecting to GitHub App installation:",
+      installUrl
+    );
 
     // Full page redirect (GitHub App installation can't happen in popup/iframe)
     window.location.href = installUrl;
@@ -91,7 +114,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   const handleSkipInstall = () => {
     // Go directly to dashboard without app installation
-    router.push('/dashboard');
+    router.push("/dashboard");
     onClose();
   };
 
@@ -103,9 +126,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         {/* Header */}
         <div className="bg-primary px-6 py-4 flex items-center justify-between border-b border-foreground">
           <h2 className="text-xl font-bold text-primary-foreground">
-            {step === 'login' && 'Connect with GitHub'}
-            {step === 'install' && 'Install GitHub App'}
-            {step === 'complete' && 'Setup Complete!'}
+            {step === "login" && "Connect with GitHub"}
+            {step === "install" && "Install GitHub App"}
+            {step === "complete" && "Setup Complete!"}
           </h2>
           <button
             onClick={onClose}
@@ -118,7 +141,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         {/* Content */}
         <div className="p-6">
           {/* Step 1: Login */}
-          {step === 'login' && (
+          {step === "login" && (
             <div className="space-y-6">
               <div className="text-center">
                 <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
@@ -128,7 +151,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   Sign in with GitHub
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  Authenticate with your GitHub account to access your repositories
+                  Authenticate with your GitHub account to access your
+                  repositories
                 </p>
               </div>
 
@@ -158,13 +182,14 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               </Button>
 
               <p className="text-xs text-muted-foreground text-center">
-                By continuing, you agree to authorize access to your GitHub account
+                By continuing, you agree to authorize access to your GitHub
+                account
               </p>
             </div>
           )}
 
           {/* Step 2: Install App */}
-          {step === 'install' && (
+          {step === "install" && (
             <div className="space-y-6">
               <div className="text-center">
                 <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
@@ -216,13 +241,14 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               </div>
 
               <p className="text-xs text-muted-foreground text-center">
-                You'll be redirected to GitHub to select repositories, then automatically returned to your dashboard
+                You&apos;ll be redirected to GitHub to select repositories, then
+                automatically returned to your dashboard
               </p>
             </div>
           )}
 
           {/* Step 3: Complete */}
-          {step === 'complete' && (
+          {step === "complete" && (
             <div className="space-y-6 text-center py-6">
               <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle className="w-12 h-12 text-foreground" />

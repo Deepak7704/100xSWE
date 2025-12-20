@@ -19,7 +19,8 @@ const LangGraphFlow = () => {
                 Understand Your Codebase
               </h4>
               <p className="font-sans text-xs sm:text-sm text-muted-foreground">
-                AI indexes your repository to deeply understand how your code is structured and connected.
+                AI indexes your repository to deeply understand how your code is
+                structured and connected.
               </p>
             </div>
           </div>
@@ -40,7 +41,8 @@ const LangGraphFlow = () => {
                 Find Relevant Files
               </h4>
               <p className="font-sans text-xs sm:text-sm text-muted-foreground">
-                Intelligent search identifies exactly which files need to be modified for your request.
+                Intelligent search identifies exactly which files need to be
+                modified for your request.
               </p>
             </div>
           </div>
@@ -61,7 +63,8 @@ const LangGraphFlow = () => {
                 Generate & Validate
               </h4>
               <p className="font-sans text-xs sm:text-sm text-muted-foreground">
-                Code is generated and tested in isolated environments to ensure it works correctly.
+                Code is generated and tested in isolated environments to ensure
+                it works correctly.
               </p>
             </div>
           </div>
@@ -80,7 +83,8 @@ const LangGraphFlow = () => {
                 Ready for Review
               </h4>
               <p className="font-sans text-xs sm:text-sm opacity-90">
-                A pull request is created with all changes ready for your approval.
+                A pull request is created with all changes ready for your
+                approval.
               </p>
             </div>
           </div>
@@ -89,7 +93,8 @@ const LangGraphFlow = () => {
 
       <div className="bg-muted border border-border rounded-xl p-4 sm:p-6 mt-6 sm:mt-8">
         <p className="font-sans text-xs sm:text-sm text-foreground">
-          <strong>Fully Automated:</strong> From understanding your request to delivering a validated pull request—no manual steps required.
+          <strong>Fully Automated:</strong> From understanding your request to
+          delivering a validated pull request—no manual steps required.
         </p>
       </div>
     </div>

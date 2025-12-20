@@ -44,7 +44,10 @@ export function Select({ value, onValueChange, children }: SelectProps) {
   );
 }
 
-export function SelectTrigger({ className = "", children }: SelectTriggerProps) {
+export function SelectTrigger({
+  className = "",
+  children,
+}: SelectTriggerProps) {
   const context = React.useContext(SelectContext);
   if (!context) throw new Error("SelectTrigger must be used within Select");
 
@@ -72,7 +75,10 @@ export function SelectContent({ children }: SelectContentProps) {
 
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (contentRef.current && !contentRef.current.contains(event.target as Node)) {
+      if (
+        contentRef.current &&
+        !contentRef.current.contains(event.target as Node)
+      ) {
         context.setIsOpen(false);
       }
     };

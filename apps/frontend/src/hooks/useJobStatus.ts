@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 interface JobStatus {
   jobId: string;
-  state: 'waiting' | 'active' | 'completed' | 'failed';
+  state: "waiting" | "active" | "completed" | "failed";
   progress: number;
   result?: {
     success: boolean;
@@ -22,36 +22,36 @@ export function useJobStatus(jobId: string | null, token: string | null) {
       return;
     }
 
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
-    let intervalId: NodeJS.Timeout;
+    const backendUrl =
+      process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
     const fetchStatus = async () => {
       try {
         const response = await fetch(`${backendUrl}/api/status/${jobId}`, {
           headers: {
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
           },
         });
 
         if (!response.ok) {
-          throw new Error('Failed to fetch job status');
+          throw new Error("Failed to fetch job status");
         }
 
         const data = await response.json();
         setStatus(data);
         setIsLoading(false);
 
-        if (data.state === 'completed' || data.state === 'failed') {
+        if (data.state === "completed" || data.state === "failed") {
           clearInterval(intervalId);
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        setError(err instanceof Error ? err.message : "Unknown error");
         setIsLoading(false);
       }
     };
 
     fetchStatus();
-    intervalId = setInterval(fetchStatus, 2000);
+    const intervalId = setInterval(fetchStatus, 2000);
 
     return () => {
       if (intervalId) {

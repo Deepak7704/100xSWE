@@ -11,6 +11,9 @@
     "./queues": "./src/queues/index.ts"
   },
   "scripts": {
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "type-check": "bun tsc --noEmit"
   },
   "dependencies": {
@@ -19,7 +22,10 @@
     "ioredis": "^5.8.2"
   },
   "devDependencies": {
+    "@eslint/js": "^9.17.0",
     "@openswe/typescript-config": "workspace:*",
-    "typescript": "^5.6.3"
+    "prettier": "^3.4.2",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.19.1"
   }
 }

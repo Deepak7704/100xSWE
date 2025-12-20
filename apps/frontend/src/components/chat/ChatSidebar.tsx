@@ -30,7 +30,9 @@ const ChatSidebar = ({ messages, jobId, isLoading }: ChatSidebarProps) => {
             <div className="flex items-center justify-center h-32">
               <div className="text-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">Initializing job...</p>
+                <p className="text-sm text-muted-foreground">
+                  Initializing job...
+                </p>
               </div>
             </div>
           ) : (
@@ -40,7 +42,7 @@ const ChatSidebar = ({ messages, jobId, isLoading }: ChatSidebarProps) => {
                 type={message.type}
                 content={message.content}
                 status={message.status}
-                isActive={message.status === 'active'}
+                isActive={message.status === "active"}
               />
             ))
           )}

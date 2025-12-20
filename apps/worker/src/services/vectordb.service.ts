@@ -1,4 +1,4 @@
-import { Pinecone } from '@pinecone-database/pinecone';
+import { Pinecone } from "@pinecone-database/pinecone";
 
 interface PineconeVector {
   id: string;
@@ -9,20 +9,20 @@ interface PineconeVector {
 export class VectorDBService {
   private pinecone: Pinecone | null = null;
   private index: any = null;
-  private readonly INDEX_NAME = 'openswe-code-index';
-  private namespace: string = 'code-chunks';
+  private readonly INDEX_NAME = "openswe-code-index";
+  private namespace: string = "code-chunks";
   private readonly HOST_URL = process.env.PINECONE_HOST;
 
   setNamespace(repoId: string): void {
-    this.namespace = `repo-${repoId.replace(/[^a-zA-Z0-9]/g, '-')}`;
+    this.namespace = `repo-${repoId.replace(/[^a-zA-Z0-9]/g, "-")}`;
   }
 
   async initialize(repoId?: string): Promise<void> {
-    console.log('Initializing Pinecone...');
+    console.log("Initializing Pinecone...");
     console.log(`Host: ${this.HOST_URL}`);
 
     if (!this.HOST_URL) {
-      throw new Error('PINECONE_HOST environment variable is not set');
+      throw new Error("PINECONE_HOST environment variable is not set");
     }
 
     if (repoId) {
@@ -30,17 +30,17 @@ export class VectorDBService {
     }
 
     this.pinecone = new Pinecone({
-      apiKey: process.env.PINECONE_API_KEY!
+      apiKey: process.env.PINECONE_API_KEY!,
     });
 
     this.index = this.pinecone.Index(this.INDEX_NAME, this.HOST_URL);
 
-    console.log('Pinecone initialized\n');
+    console.log("Pinecone initialized\n");
   }
 
   async upsertVectors(vectors: PineconeVector[]): Promise<void> {
     if (!this.index) {
-      throw new Error('VectorDB not initialized');
+      throw new Error("VectorDB not initialized");
     }
 
     console.log(`Upserting ${vectors.length} vectors to Pinecone...`);
@@ -58,19 +58,23 @@ export class VectorDBService {
       await this.index.namespace(this.namespace).upsert(batch);
 
       if (i + BATCH_SIZE < vectors.length) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
     }
 
-    console.log(`Stored ${vectors.length} vectors in Pinecone (namespace: ${this.namespace})\n`);
+    console.log(
+      `Stored ${vectors.length} vectors in Pinecone (namespace: ${this.namespace})\n`
+    );
   }
 
   async queryVectors(
     queryVector: number[],
     topK: number = 20
-  ): Promise<Array<{ id: string; score: number; metadata: Record<string, any> }>> {
+  ): Promise<
+    Array<{ id: string; score: number; metadata: Record<string, any> }>
+  > {
     if (!this.index) {
-      throw new Error('VectorDB not initialized');
+      throw new Error("VectorDB not initialized");
     }
 
     console.log(`Querying Pinecone namespace: ${this.namespace}`);
@@ -78,42 +82,41 @@ export class VectorDBService {
     const results = await this.index.namespace(this.namespace).query({
       vector: queryVector,
       topK: topK,
-      includeMetadata: true
+      includeMetadata: true,
     });
 
     return results.matches.map((match: any) => ({
       id: match.id,
       score: match.score,
-      metadata: match.metadata
+      metadata: match.metadata,
     }));
   }
 
   async deleteNamespace(): Promise<void> {
     if (!this.index) {
-      throw new Error('VectorDB not initialized');
+      throw new Error("VectorDB not initialized");
     }
 
     console.log(`Deleting namespace: ${this.namespace}`);
     await this.index.namespace(this.namespace).deleteAll();
-    console.log('Namespace cleared\n');
+    console.log("Namespace cleared\n");
   }
 
-  async deleteByFilePath(repoId: string, filePath: string):Promise<void> {
+  async deleteByFilePath(repoId: string, filePath: string): Promise<void> {
     if (!this.index) {
-      throw new Error('VectorDB not initialized');
+      throw new Error("VectorDB not initialized");
     }
 
     try {
       this.setNamespace(repoId);
 
       await this.index.namespace(this.namespace).deleteMany({
-        filePath: filePath
+        filePath: filePath,
       });
 
       console.log(`VectorDB: Deleted vectors for ${filePath}`);
     } catch (error: any) {
-      console.error(`VectorDB: Failed to delete ${filePath}:`,
-  error.message);
+      console.error(`VectorDB: Failed to delete ${filePath}:`, error.message);
       throw error;
     }
   }

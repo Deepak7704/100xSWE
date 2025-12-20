@@ -29,7 +29,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${instrumentSerif.variable} ${spaceGrotesk.variable}`}>
+    <html
+      lang="en"
+      className={`${instrumentSerif.variable} ${spaceGrotesk.variable}`}
+    >
       <body className="font-sans">
         <AuthProvider>
           <Providers>

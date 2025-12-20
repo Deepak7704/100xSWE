@@ -19,8 +19,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        'serif': ['var(--font-instrument-serif)', 'serif'],
-        'sans': ['var(--font-space-grotesk)', 'sans-serif'],
+        serif: ["var(--font-instrument-serif)", "serif"],
+        sans: ["var(--font-space-grotesk)", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",

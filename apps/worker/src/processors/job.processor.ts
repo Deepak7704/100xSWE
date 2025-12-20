@@ -1,13 +1,13 @@
-import Redis from 'ioredis';
-import { Queue } from 'bullmq';
-import { GitHubService } from '../services/github.service';
-import { GitService } from '../services/git.service';
-import { SandboxService } from '../services/sandbox.service';
-import { AIService } from '../services/ai.service';
-import { generateBranchName, extractKeywords } from '../utils/helpers';
-import { EnhancedCodeGraphService } from '../services/code_graph.service';
-import { CodeSkeletonService } from '../services/code_skeleton';
-import { createCodeValidationGraph } from '../workflows/code_validation';
+import Redis from "ioredis";
+import { Queue } from "bullmq";
+import { GitHubService } from "../services/github.service";
+import { GitService } from "../services/git.service";
+import { SandboxService } from "../services/sandbox.service";
+import { AIService } from "../services/ai.service";
+import { generateBranchName, extractKeywords } from "../utils/helpers";
+import { EnhancedCodeGraphService } from "../services/code_graph.service";
+import { CodeSkeletonService } from "../services/code_skeleton";
+import { createCodeValidationGraph } from "../workflows/code_validation";
 
 export class JobProcessor {
   private redis: Redis;
@@ -21,18 +21,24 @@ export class JobProcessor {
     this.gitService = new GitService();
     this.sandboxService = new SandboxService();
     this.aiService = new AIService();
-    this.indexingQueue = new Queue('indexing', { connection: redis });
+    this.indexingQueue = new Queue("indexing", { connection: redis });
   }
 
   async process(job: any): Promise<{
     success: boolean;
     prUrl: string;
     prNumber: number;
-    fileDiffs: Array<{ path: string; oldContent: string; newContent: string; diffOutput: string }>;
+    fileDiffs: Array<{
+      path: string;
+      oldContent: string;
+      newContent: string;
+      diffOutput: string;
+    }>;
     fileOperations: any[];
     explanation: string;
   }> {
-    const { repoUrl, task, repoId, indexingJobId, installationToken } = job.data;
+    const { repoUrl, task, repoId, indexingJobId, installationToken } =
+      job.data;
     const projectId = `job-${job.id}`;
 
     console.log(`Processing job ${job.id}: ${task}`);
@@ -40,11 +46,15 @@ export class JobProcessor {
 
     const githubToken = installationToken || process.env.GITHUB_ACCESS_TOKEN;
     if (!githubToken) {
-      throw new Error('No GitHub token available (neither installationToken nor GITHUB_ACCESS_TOKEN)');
+      throw new Error(
+        "No GitHub token available (neither installationToken nor GITHUB_ACCESS_TOKEN)"
+      );
     }
 
     const githubService = new GitHubService(githubToken);
-    console.log(`Using ${installationToken ? 'installation' : 'personal'} token for GitHub operations`);
+    console.log(
+      `Using ${installationToken ? "installation" : "personal"} token for GitHub operations`
+    );
 
     try {
       if (indexingJobId) {
@@ -53,19 +63,22 @@ export class JobProcessor {
         console.log(`Indexing complete! Proceeding with code generation...`);
       }
       await job.updateProgress(10);
-      console.log('Step 1: Creating sandbox...');
+      console.log("Step 1: Creating sandbox...");
       const sandbox = await this.sandboxService.getOrCreateSandbox(projectId);
 
       await job.updateProgress(20);
-      console.log('Step 2: Cloning repository...');
+      console.log("Step 2: Cloning repository...");
       const repoPath = await this.gitService.cloneRepository(sandbox, repoUrl);
 
-      console.log('Step 3.5: Detecting package manager...');
-      const packageManager = await this.sandboxService.detectPackageManager(sandbox, repoPath);
+      console.log("Step 3.5: Detecting package manager...");
+      const packageManager = await this.sandboxService.detectPackageManager(
+        sandbox,
+        repoPath
+      );
       console.log(`Detected package manager: ${packageManager}\n`);
 
       await job.updateProgress(40);
-      console.log('Step 4: Finding relevant files using Hybrid Search...');
+      console.log("Step 4: Finding relevant files using Hybrid Search...");
       const relevantFiles = await this.aiService.findRelevantFilesHybrid(
         this.redis,
         repoId,
@@ -74,18 +87,27 @@ export class JobProcessor {
       );
 
       if (relevantFiles.length === 0) {
-        throw new Error('No relevant files found. Repository may not be indexed yet.');
+        throw new Error(
+          "No relevant files found. Repository may not be indexed yet."
+        );
       }
 
-      console.log('Step 4.5:Building the code graph and code skeletons for candidate files');
+      console.log(
+        "Step 4.5:Building the code graph and code skeletons for candidate files"
+      );
       const graphService = new EnhancedCodeGraphService();
       const codeSkeletonService = new CodeSkeletonService();
 
-      const candidateContents = await this.sandboxService.getFileContents(sandbox, relevantFiles, Infinity, repoPath);
+      const candidateContents = await this.sandboxService.getFileContents(
+        sandbox,
+        relevantFiles,
+        Infinity,
+        repoPath
+      );
       const codeGraph = graphService.buildGraph(candidateContents);
       console.log(`Code graph built: ${codeGraph.nodes.size} nodes extracted`);
 
-      console.log('\nStep 4.6: Finding dependent files...');
+      console.log("\nStep 4.6: Finding dependent files...");
       const dependentFiles = graphService.findDependentFiles(
         codeGraph,
         relevantFiles,
@@ -101,70 +123,104 @@ export class JobProcessor {
         });
 
         const dependentContents = await this.sandboxService.getFileContents(
-          sandbox, dependentFiles, Infinity, repoPath
+          sandbox,
+          dependentFiles,
+          Infinity,
+          repoPath
         );
 
-        const allCandidateContents = new Map([...candidateContents, ...dependentContents]);
+        const allCandidateContents = new Map([
+          ...candidateContents,
+          ...dependentContents,
+        ]);
         const expandedCodeGraph = graphService.buildGraph(allCandidateContents);
-        console.log(`Expanded code graph: ${expandedCodeGraph.nodes.size} nodes (including dependents)`);
+        console.log(
+          `Expanded code graph: ${expandedCodeGraph.nodes.size} nodes (including dependents)`
+        );
 
-        relevantFiles.forEach(filePath => {
-          const skeleton = codeSkeletonService.generateSkeleton(expandedCodeGraph, filePath);
+        relevantFiles.forEach((filePath) => {
+          const skeleton = codeSkeletonService.generateSkeleton(
+            expandedCodeGraph,
+            filePath
+          );
           const formatted = codeSkeletonService.formatSkeletonForLLM(skeleton);
           skeletons.set(filePath, `[CANDIDATE FILE]\n${formatted}`);
         });
 
-        dependentFiles.forEach(filePath => {
-          const skeleton = codeSkeletonService.generateSkeleton(expandedCodeGraph, filePath);
+        dependentFiles.forEach((filePath) => {
+          const skeleton = codeSkeletonService.generateSkeleton(
+            expandedCodeGraph,
+            filePath
+          );
           const formatted = codeSkeletonService.formatSkeletonForLLM(skeleton);
           skeletons.set(filePath, `[DEPENDENT FILE]\n${formatted}`);
         });
 
-        console.log(`Generated ${skeletons.size} code skeletons (${relevantFiles.length} candidates + ${dependentFiles.length} dependents)`);
+        console.log(
+          `Generated ${skeletons.size} code skeletons (${relevantFiles.length} candidates + ${dependentFiles.length} dependents)`
+        );
       } else {
-        console.log('No dependent files found.');
+        console.log("No dependent files found.");
 
-        relevantFiles.forEach(filePath => {
-          const skeleton = codeSkeletonService.generateSkeleton(codeGraph, filePath);
+        relevantFiles.forEach((filePath) => {
+          const skeleton = codeSkeletonService.generateSkeleton(
+            codeGraph,
+            filePath
+          );
           const formatted = codeSkeletonService.formatSkeletonForLLM(skeleton);
           skeletons.set(filePath, formatted);
         });
         console.log(`Generated ${skeletons.size} code skeletons`);
       }
 
-      console.log('Step 5: Selecting files to modify...');
+      console.log("Step 5: Selecting files to modify...");
       const keywords = extractKeywords(task);
-      let filesToModify = await this.aiService.selectFilesToModifyWithSkeletons(task, skeletons, repoPath);
+      let filesToModify = await this.aiService.selectFilesToModifyWithSkeletons(
+        task,
+        skeletons,
+        repoPath
+      );
 
       if (filesToModify.length === 0) {
-        console.warn('\nFallback: LLM selected 0 files, using hybrid search results');
+        console.warn(
+          "\nFallback: LLM selected 0 files, using hybrid search results"
+        );
 
         const topN = Math.min(5, relevantFiles.length);
         filesToModify = relevantFiles.slice(0, topN);
 
-        console.log(`Selected top ${filesToModify.length} files from hybrid search`);
+        console.log(
+          `Selected top ${filesToModify.length} files from hybrid search`
+        );
         filesToModify.forEach((file, idx) => {
           console.log(`  ${idx + 1}. ${file}`);
         });
-        console.log('');
+        console.log("");
       }
 
       await job.updateProgress(60);
-      console.log('Step 6: Analyzing files (existing vs new)...');
-      const { existingFiles, newFiles } = await this.sandboxService.separateExistingAndNewFiles(
-        sandbox,
-        filesToModify,
-        repoPath
-      );
+      console.log("Step 6: Analyzing files (existing vs new)...");
+      const { existingFiles, newFiles } =
+        await this.sandboxService.separateExistingAndNewFiles(
+          sandbox,
+          filesToModify,
+          repoPath
+        );
 
-      console.log('Step 6.5: Reading existing file contents...');
-      const fileContents = existingFiles.length > 0
-        ? await this.sandboxService.getFileContents(sandbox, existingFiles, Infinity, repoPath)
-        : new Map<string, string>();
+      console.log("Step 6.5: Reading existing file contents...");
+      const fileContents =
+        existingFiles.length > 0
+          ? await this.sandboxService.getFileContents(
+              sandbox,
+              existingFiles,
+              Infinity,
+              repoPath
+            )
+          : new Map<string, string>();
       const allFiles = await this.sandboxService.getFileTree(sandbox, repoPath);
 
       await job.updateProgress(70);
-      console.log('\nStep 7: Starting LangGraph Code Generation Workflow');
+      console.log("\nStep 7: Starting LangGraph Code Generation Workflow");
 
       const branchName = generateBranchName(task);
       const graph = createCodeValidationGraph();
@@ -174,13 +230,13 @@ export class JobProcessor {
         repoId,
         task,
         forkUrl: repoUrl,
-        forkOwner: repoId.split('/')[0],
+        forkOwner: repoId.split("/")[0],
         branchName,
         packageManager,
         relevantFiles,
         filesToModify,
-        fileContents,  // Only existing files with content
-        newFiles,  // List of files to be created
+        fileContents, // Only existing files with content
+        newFiles, // List of files to be created
         allFiles,
         keywords,
         codeSkeletons: skeletons,
@@ -198,16 +254,20 @@ export class JobProcessor {
         generatedCode: null,
         prUrl: null,
         prNumber: null,
-        errorMessage: null
+        errorMessage: null,
       });
 
-      console.log('\nLangGraph Workflow Completed');
+      console.log("\nLangGraph Workflow Completed");
       console.log(`Final Status: ${workflowResult.status}`);
-      console.log(`Iterations: ${workflowResult.currentIteration}/${workflowResult.maxIterations}`);
+      console.log(
+        `Iterations: ${workflowResult.currentIteration}/${workflowResult.maxIterations}`
+      );
       console.log(`Validations Passed: ${workflowResult.allValidationsPassed}`);
 
       if (workflowResult.status !== "success" || !workflowResult.prUrl) {
-        const errorMsg = workflowResult.errorMessage || 'Workflow failed to generate valid code';
+        const errorMsg =
+          workflowResult.errorMessage ||
+          "Workflow failed to generate valid code";
         console.error(`\nWorkflow failed: ${errorMsg}`);
         throw new Error(errorMsg);
       }
@@ -215,7 +275,7 @@ export class JobProcessor {
       console.log(`\nPR Created: ${workflowResult.prUrl}`);
       console.log(`PR Number: #${workflowResult.prNumber}`);
 
-      console.log('\nStep 8: Generating file diffs...');
+      console.log("\nStep 8: Generating file diffs...");
       const fileDiffs = await this.getFileDiffs(
         sandbox,
         repoPath,
@@ -224,7 +284,7 @@ export class JobProcessor {
       console.log(`Generated diffs for ${fileDiffs.length} files`);
 
       await job.updateProgress(100);
-      console.log('\nSandbox will remain active for 30 minutes');
+      console.log("\nSandbox will remain active for 30 minutes");
 
       console.log(`\nJob ${job.id} completed successfully!`);
 
@@ -234,9 +294,8 @@ export class JobProcessor {
         prNumber: workflowResult.prNumber!,
         fileDiffs,
         fileOperations: workflowResult.generatedCode?.fileOperations || [],
-        explanation: workflowResult.generatedCode?.explanation || ''
+        explanation: workflowResult.generatedCode?.explanation || "",
       };
-
     } catch (error) {
       console.error(`Job ${job.id} failed:`, error);
       await this.sandboxService.cleanup(projectId);
@@ -248,27 +307,40 @@ export class JobProcessor {
     sandbox: any,
     repoPath: string,
     fileOperations: any[]
-  ): Promise<Array<{ path: string; oldContent: string; newContent: string; diffOutput: string }>> {
-    const diffs: Array<{ path: string; oldContent: string; newContent: string; diffOutput: string }> = [];
+  ): Promise<
+    Array<{
+      path: string;
+      oldContent: string;
+      newContent: string;
+      diffOutput: string;
+    }>
+  > {
+    const diffs: Array<{
+      path: string;
+      oldContent: string;
+      newContent: string;
+      diffOutput: string;
+    }> = [];
 
     const excludePatterns = [
-      'package-lock.json',
-      'yarn.lock',
-      'pnpm-lock.yaml',
-      'Cargo.lock',
-      'Gemfile.lock',
-      'composer.lock',
-      'poetry.lock',
-      'Pipfile.lock',
-      'go.sum',
-      'mix.lock',
-      'pubspec.lock',
-      '.lock'
+      "package-lock.json",
+      "yarn.lock",
+      "pnpm-lock.yaml",
+      "Cargo.lock",
+      "Gemfile.lock",
+      "composer.lock",
+      "poetry.lock",
+      "Pipfile.lock",
+      "go.sum",
+      "mix.lock",
+      "pubspec.lock",
+      ".lock",
     ];
 
     const shouldExcludeFile = (filePath: string): boolean => {
-      return excludePatterns.some(pattern =>
-        filePath.endsWith(pattern) || filePath.includes(`/${pattern}`)
+      return excludePatterns.some(
+        (pattern) =>
+          filePath.endsWith(pattern) || filePath.includes(`/${pattern}`)
       );
     };
 
@@ -281,81 +353,88 @@ export class JobProcessor {
 
         const filePath = `${repoPath}/${op.path}`;
 
-        let newContent = '';
+        let newContent = "";
         try {
           const readResult = await sandbox.files.read(filePath);
-          newContent = readResult || '';
+          newContent = readResult || "";
         } catch (error) {
-          newContent = '';
+          newContent = "";
         }
 
-        let oldContent = '';
+        let oldContent = "";
         try {
-          const gitShowResult = await sandbox.commands.run(`cd ${repoPath} && git show HEAD:${op.path}`);
-          oldContent = gitShowResult.stdout || '';
+          const gitShowResult = await sandbox.commands.run(
+            `cd ${repoPath} && git show HEAD:${op.path}`
+          );
+          oldContent = gitShowResult.stdout || "";
         } catch (error) {
-          oldContent = '';
+          oldContent = "";
         }
 
-        let diffOutput = '';
+        let diffOutput = "";
         try {
-          let baseBranch = 'main';
+          let baseBranch = "main";
           try {
             const branchListResult = await sandbox.commands.run(
               `cd ${repoPath} && git branch -r`
             );
-            const remoteBranches = branchListResult.stdout || '';
-            if (remoteBranches.includes('origin/master') && !remoteBranches.includes('origin/main')) {
-              baseBranch = 'master';
+            const remoteBranches = branchListResult.stdout || "";
+            if (
+              remoteBranches.includes("origin/master") &&
+              !remoteBranches.includes("origin/main")
+            ) {
+              baseBranch = "master";
             }
           } catch (e) {
-            console.warn('Failed to detect default branch, using main');
+            console.warn("Failed to detect default branch, using main");
           }
 
-          console.log(`Generating diff for ${op.path} against origin/${baseBranch}...`);
+          console.log(
+            `Generating diff for ${op.path} against origin/${baseBranch}...`
+          );
 
           const gitDiffResult = await sandbox.commands.run(
             `cd ${repoPath} && git diff origin/${baseBranch}...HEAD -- ${op.path}`
           );
-          diffOutput = gitDiffResult.stdout || '';
+          diffOutput = gitDiffResult.stdout || "";
 
           if (!diffOutput) {
             if (!oldContent && newContent) {
-              const lines = newContent.split('\n');
+              const lines = newContent.split("\n");
               diffOutput = `diff --git a/${op.path} b/${op.path}\n`;
               diffOutput += `new file mode 100644\n`;
               diffOutput += `--- /dev/null\n`;
               diffOutput += `+++ b/${op.path}\n`;
               diffOutput += `@@ -0,0 +1,${lines.length} @@\n`;
-              diffOutput += lines.map(line => `+${line}`).join('\n');
+              diffOutput += lines.map((line) => `+${line}`).join("\n");
             } else if (oldContent && !newContent) {
-              const lines = oldContent.split('\n');
+              const lines = oldContent.split("\n");
               diffOutput = `diff --git a/${op.path} b/${op.path}\n`;
               diffOutput += `deleted file mode 100644\n`;
               diffOutput += `--- a/${op.path}\n`;
               diffOutput += `+++ /dev/null\n`;
               diffOutput += `@@ -1,${lines.length} +0,0 @@\n`;
-              diffOutput += lines.map(line => `-${line}`).join('\n');
+              diffOutput += lines.map((line) => `-${line}`).join("\n");
             }
           }
         } catch (error) {
           console.warn(`Failed to generate git diff for ${op.path}:`, error);
-          diffOutput = '';
+          diffOutput = "";
         }
 
         diffs.push({
           path: op.path,
           oldContent,
           newContent,
-          diffOutput
+          diffOutput,
         });
       } catch (error) {
         console.warn(`Failed to get diff for ${op.path}:`, error);
         diffs.push({
           path: op.path,
-          oldContent: '',
-          newContent: '',
-          diffOutput: ''
+          oldContent: "",
+          newContent: "",
+          diffOutput: "",
         });
       }
     }
@@ -383,24 +462,25 @@ export class JobProcessor {
 
         console.log(`Indexing status: ${state} (${progress}%)`);
 
-        if (state === 'completed') {
+        if (state === "completed") {
           console.log(`Indexing completed successfully!`);
           return;
         }
 
-        if (state === 'failed') {
-          const reason = indexingJob.failedReason || 'Unknown error';
+        if (state === "failed") {
+          const reason = indexingJob.failedReason || "Unknown error";
           throw new Error(`Indexing failed: ${reason}`);
         }
 
-        await new Promise(resolve => setTimeout(resolve, pollInterval));
-
+        await new Promise((resolve) => setTimeout(resolve, pollInterval));
       } catch (error) {
         console.error(`Error checking indexing status:`, error);
         throw error;
       }
     }
 
-    throw new Error(`Indexing timeout: Job ${indexingJobId} took longer than ${maxWaitTime / 1000 / 60} minutes`);
+    throw new Error(
+      `Indexing timeout: Job ${indexingJobId} took longer than ${maxWaitTime / 1000 / 60} minutes`
+    );
   }
 }

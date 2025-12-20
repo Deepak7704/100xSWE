@@ -1,5 +1,5 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import type { CodeChunk } from './chunking.service';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import type { CodeChunk } from "./chunking.service";
 
 interface EmbeddingResult {
   chunkId: string;
@@ -17,13 +17,15 @@ export class EmbeddingService {
       process.env.GOOGLE_GENERATIVE_AI_API_KEY!
     );
     this.model = this.genAI.getGenerativeModel({
-      model: 'text-embedding-004'
+      model: "text-embedding-004",
     });
   }
 
   async generateEmbeddings(chunks: CodeChunk[]): Promise<number[][]> {
     console.log(`Generating embeddings for ${chunks.length} chunks`);
-    console.log(`Model: text-embedding-004 (${this.EMBEDDING_DIMENSION} dimensions)\n`);
+    console.log(
+      `Model: text-embedding-004 (${this.EMBEDDING_DIMENSION} dimensions)\n`
+    );
 
     const embeddings: number[][] = [];
     const totalBatches = Math.ceil(chunks.length / this.BATCH_SIZE);
@@ -35,13 +37,13 @@ export class EmbeddingService {
       console.log(`Processing batch ${batchNumber}/${totalBatches}`);
 
       const batchEmbeddings = await Promise.all(
-        batch.map(chunk => this.embedChunk(chunk))
+        batch.map((chunk) => this.embedChunk(chunk))
       );
 
       embeddings.push(...batchEmbeddings);
 
       if (i + this.BATCH_SIZE < chunks.length) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
 
@@ -69,7 +71,7 @@ export class EmbeddingService {
     return `
 File: ${chunk.filePath}
 Type: ${chunk.fileType}
-Function: ${chunk.functionName || 'N/A'}
+Function: ${chunk.functionName || "N/A"}
 Lines: ${chunk.lineStart}-${chunk.lineEnd}
 
 ${chunk.content}

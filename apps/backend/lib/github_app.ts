@@ -1,11 +1,14 @@
-import { App } from '@octokit/app';
+import { App } from "@octokit/app";
 
 const GITHUB_APP_ID = process.env.GITHUB_APP_ID;
-const GITHUB_APP_PRIVATE_KEY = process.env.GITHUB_APP_PRIVATE_KEY?.replace(/\\n/g, '\n');
+const GITHUB_APP_PRIVATE_KEY = process.env.GITHUB_APP_PRIVATE_KEY?.replace(
+  /\\n/g,
+  "\n"
+);
 const GITHUB_WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET;
 
 if (!GITHUB_APP_ID || !GITHUB_APP_PRIVATE_KEY || !GITHUB_WEBHOOK_SECRET) {
-  throw new Error('Missing GitHub App credentials');
+  throw new Error("Missing GitHub App credentials");
 }
 
 const app = new App({
@@ -29,13 +32,21 @@ export async function getInstallationOctokit(installationId: number) {
   }
 }
 
-export async function getInstallationToken(installationId: number): Promise<string> {
-  console.log(`[GitHub App] Generating token for installation ${installationId}`);
+export async function getInstallationToken(
+  installationId: number
+): Promise<string> {
+  console.log(
+    `[GitHub App] Generating token for installation ${installationId}`
+  );
 
   try {
     const octokit = await app.getInstallationOctokit(installationId);
-    const { token } = await octokit.auth({ type: 'installation' }) as { token: string };
-    console.log(`[GitHub App] Token generated for installation ${installationId}`);
+    const { token } = (await octokit.auth({ type: "installation" })) as {
+      token: string;
+    };
+    console.log(
+      `[GitHub App] Token generated for installation ${installationId}`
+    );
     return token;
   } catch (error: any) {
     console.error(`[GitHub App] Token generation failed:`, error.message);
@@ -43,19 +54,28 @@ export async function getInstallationToken(installationId: number): Promise<stri
   }
 }
 
-export async function verifyWebhookSignature(payload: Buffer | string, signature: string): Promise<boolean> {
+export async function verifyWebhookSignature(
+  payload: Buffer | string,
+  signature: string
+): Promise<boolean> {
   if (!signature) return false;
 
   try {
-    const payloadString = Buffer.isBuffer(payload) ? payload.toString('utf8') : payload;
+    const payloadString = Buffer.isBuffer(payload)
+      ? payload.toString("utf8")
+      : payload;
     return await app.webhooks.verify(payloadString, signature);
   } catch (error) {
-    console.error('[GitHub App] Signature verification failed');
+    console.error("[GitHub App] Signature verification failed");
     return false;
   }
 }
 
-export async function getRepository(installationId: number, owner: string, repo: string) {
+export async function getRepository(
+  installationId: number,
+  owner: string,
+  repo: string
+) {
   const octokit = await getInstallationOctokit(installationId);
   const { data } = await (octokit as any).rest.repos.get({ owner, repo });
   return data;

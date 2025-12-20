@@ -2,7 +2,6 @@ import { parse } from "@babel/parser";
 import traverse, { NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
 
-
 export interface Parameter {
   name: string;
   type?: string;
@@ -87,7 +86,7 @@ export class EnhancedCodeGraphService {
       fileToNodes: new Map(),
       nameToNodes: new Map(),
       functionCalls: new Map(),
-      importedBy: new Map()
+      importedBy: new Map(),
     };
 
     fileContents.forEach((content, filePath) => {
@@ -95,8 +94,8 @@ export class EnhancedCodeGraphService {
 
       try {
         const ast = parse(content, {
-          sourceType: 'module',
-          plugins: ['typescript', 'jsx', 'decorators-legacy']
+          sourceType: "module",
+          plugins: ["typescript", "jsx", "decorators-legacy"],
         });
 
         this.extractFromAST(ast, filePath, graph);
@@ -113,7 +112,11 @@ export class EnhancedCodeGraphService {
     return graph;
   }
 
-  private extractFromAST(ast: any, filePath: string, graph: EnhancedCodeGraph): void {
+  private extractFromAST(
+    ast: any,
+    filePath: string,
+    graph: EnhancedCodeGraph
+  ): void {
     const scopeCallsMap = new Map<string, Set<string>>();
 
     traverse(ast, {
@@ -122,7 +125,7 @@ export class EnhancedCodeGraphService {
 
         if (!node.loc) return;
 
-        const functionName = node.id?.name || 'anonymous';
+        const functionName = node.id?.name || "anonymous";
         const functionId = `${filePath}:${functionName}`;
 
         console.log(`  Found function: ${functionName}`);
@@ -135,24 +138,24 @@ export class EnhancedCodeGraphService {
 
         const codeNode: EnhancedCodeNode = {
           id: functionId,
-          type: 'function',
+          type: "function",
           name: functionName,
           filePath,
           location: {
             start: node.loc.start,
             end: node.loc.end,
-            lineCount: node.loc.end.line - node.loc.start.line + 1
+            lineCount: node.loc.end.line - node.loc.start.line + 1,
           },
           signature,
           context,
           isExported: this.isNodeExported(path),
-          modifiers: this.extractModifiers(node)
+          modifiers: this.extractModifiers(node),
         };
 
         this.addNodeToGraph(graph, codeNode);
 
-        calledFunctions.forEach(calledFunc => {
-          this.addEdgeToGraph(graph, functionId, calledFunc, 'calls');
+        calledFunctions.forEach((calledFunc) => {
+          this.addEdgeToGraph(graph, functionId, calledFunc, "calls");
         });
       },
 
@@ -161,38 +164,39 @@ export class EnhancedCodeGraphService {
 
         if (!node.loc) return;
 
-        const className = node.id?.name || 'AnonymousClass';
+        const className = node.id?.name || "AnonymousClass";
         const classId = `${filePath}:${className}`;
 
         console.log(`  Found class: ${className}`);
 
         const properties = this.extractClassProperties(node);
         const methods = this.extractClassMethods(node, path, classId);
-        const extendsFrom = node.superClass && t.isIdentifier(node.superClass)
-          ? (node.superClass as t.Identifier).name
-          : undefined;
+        const extendsFrom =
+          node.superClass && t.isIdentifier(node.superClass)
+            ? (node.superClass as t.Identifier).name
+            : undefined;
 
         const classNode: EnhancedCodeNode = {
           id: classId,
-          type: 'class',
+          type: "class",
           name: className,
           filePath,
           location: {
             start: node.loc.start,
             end: node.loc.end,
-            lineCount: node.loc.end.line - node.loc.start.line + 1
+            lineCount: node.loc.end.line - node.loc.start.line + 1,
           },
           properties,
           methods,
           extendsFrom,
           isExported: this.isNodeExported(path),
-          modifiers: this.extractModifiers(node)
+          modifiers: this.extractModifiers(node),
         };
 
         this.addNodeToGraph(graph, classNode);
 
         if (extendsFrom) {
-          this.addEdgeToGraph(graph, classId, extendsFrom, 'extends');
+          this.addEdgeToGraph(graph, classId, extendsFrom, "extends");
         }
       },
 
@@ -200,8 +204,8 @@ export class EnhancedCodeGraphService {
         const node = path.node as t.ImportDeclaration;
         const importSource = node.source.value;
 
-        node.specifiers.forEach(spec => {
-          let importName = '';
+        node.specifiers.forEach((spec) => {
+          let importName = "";
 
           if (t.isImportDefaultSpecifier(spec)) {
             importName = spec.local.name;
@@ -219,21 +223,21 @@ export class EnhancedCodeGraphService {
 
             const importNode: EnhancedCodeNode = {
               id: importId,
-              type: 'import',
+              type: "import",
               name: importName,
               filePath,
               location: {
                 start: node.loc?.start || { line: 0, column: 0 },
                 end: node.loc?.end || { line: 0, column: 0 },
-                lineCount: 1
-              }
+                lineCount: 1,
+              },
             };
 
             this.addNodeToGraph(graph, importNode);
-            this.addEdgeToGraph(graph, filePath, importSource, 'imports');
+            this.addEdgeToGraph(graph, filePath, importSource, "imports");
           }
         });
-      }
+      },
     });
 
     scopeCallsMap.forEach((calls, functionId) => {
@@ -248,7 +252,7 @@ export class EnhancedCodeGraphService {
     const params = node.params || [];
 
     const parameters = params.map((param: any) => {
-      const paramName = t.isIdentifier(param) ? param.name : 'unknown';
+      const paramName = t.isIdentifier(param) ? param.name : "unknown";
       const paramType = (param as any).typeAnnotation
         ? this.extractTypeString((param as any).typeAnnotation.typeAnnotation)
         : undefined;
@@ -256,23 +260,24 @@ export class EnhancedCodeGraphService {
       return {
         name: paramName,
         type: paramType,
-        optional: param.optional || false
+        optional: param.optional || false,
       };
     });
 
     const returnTypeNode = node.returnType;
-    const returnType = returnTypeNode && !t.isNoop(returnTypeNode)
-      ? this.extractTypeString((returnTypeNode as any).typeAnnotation)
-      : undefined;
+    const returnType =
+      returnTypeNode && !t.isNoop(returnTypeNode)
+        ? this.extractTypeString((returnTypeNode as any).typeAnnotation)
+        : undefined;
 
     const calledFunctions = this.extractCalledFunctions(path);
 
     return {
-      name: node.id?.name || 'anonymous',
+      name: node.id?.name || "anonymous",
       parameters,
       returnType,
       isAsync: node.async || false,
-      calledFunctions
+      calledFunctions,
     };
   }
 
@@ -282,20 +287,22 @@ export class EnhancedCodeGraphService {
     path.traverse({
       CallExpression: (callPath: NodePath) => {
         const callee = (callPath.node as t.CallExpression).callee;
-        let functionName = '';
+        let functionName = "";
 
         if (t.isIdentifier(callee)) {
           functionName = callee.name;
         } else if (t.isMemberExpression(callee)) {
           if (t.isIdentifier((callee as t.MemberExpression).property)) {
-            functionName = ((callee as t.MemberExpression).property as t.Identifier).name;
+            functionName = (
+              (callee as t.MemberExpression).property as t.Identifier
+            ).name;
           }
         }
 
         if (functionName && !this.isKeyword(functionName)) {
           calledFunctions.add(functionName);
         }
-      }
+      },
     });
 
     return Array.from(calledFunctions);
@@ -336,35 +343,37 @@ export class EnhancedCodeGraphService {
           if (t.isIdentifier(newExpr.callee)) {
             thrownErrors.add(newExpr.callee.name);
           } else {
-            thrownErrors.add('Error');
+            thrownErrors.add("Error");
           }
         }
-      }
+      },
     });
 
     return {
       usedVariables: Array.from(usedVariables),
       declaredVariables: Array.from(declaredVariables),
       externalDependencies: Array.from(externalDependencies),
-      thrownErrors: Array.from(thrownErrors)
+      thrownErrors: Array.from(thrownErrors),
     };
   }
 
   private extractClassProperties(node: t.ClassDeclaration): PropertyInfo[] {
     const properties: PropertyInfo[] = [];
 
-    node.body.body.forEach(member => {
+    node.body.body.forEach((member) => {
       if (t.isClassProperty(member) && t.isIdentifier(member.key)) {
         const propName = member.key.name;
         const typeStr = (member as any).typeAnnotation
-          ? this.extractTypeString((member as any).typeAnnotation.typeAnnotation)
+          ? this.extractTypeString(
+              (member as any).typeAnnotation.typeAnnotation
+            )
           : undefined;
 
         properties.push({
           name: propName,
           type: typeStr,
-          accessLevel: (member as any).accessibility || 'public',
-          isOptional: member.optional || false
+          accessLevel: (member as any).accessibility || "public",
+          isOptional: member.optional || false,
         });
       }
     });
@@ -379,39 +388,42 @@ export class EnhancedCodeGraphService {
   ): MethodInfo[] {
     const methods: MethodInfo[] = [];
 
-    node.body.body.forEach(member => {
+    node.body.body.forEach((member) => {
       if (t.isClassMethod(member) && t.isIdentifier(member.key)) {
         const methodName = member.key.name;
         const methodId = `${classId}.${methodName}`;
 
         const params = member.params || [];
         const parameters = params.map((param: any) => ({
-          name: t.isIdentifier(param) ? param.name : 'unknown',
+          name: t.isIdentifier(param) ? param.name : "unknown",
           type: (param as any).typeAnnotation
-            ? this.extractTypeString((param as any).typeAnnotation.typeAnnotation)
+            ? this.extractTypeString(
+                (param as any).typeAnnotation.typeAnnotation
+              )
             : undefined,
-          optional: param.optional || false
+          optional: param.optional || false,
         }));
 
         const returnTypeNode = (member as any).returnType;
-        const returnType = returnTypeNode && !t.isNoop(returnTypeNode)
-          ? this.extractTypeString(returnTypeNode.typeAnnotation)
-          : undefined;
+        const returnType =
+          returnTypeNode && !t.isNoop(returnTypeNode)
+            ? this.extractTypeString(returnTypeNode.typeAnnotation)
+            : undefined;
 
         const signature: FunctionSignature = {
           name: methodName,
           parameters,
           returnType,
           isAsync: member.async || false,
-          calledFunctions: []
+          calledFunctions: [],
         };
 
         methods.push({
           name: methodName,
           signature,
-          accessLevel: (member as any).accessibility || 'public',
+          accessLevel: (member as any).accessibility || "public",
           isStatic: member.static || false,
-          isAsync: member.async || false
+          isAsync: member.async || false,
         });
       }
     });
@@ -419,7 +431,10 @@ export class EnhancedCodeGraphService {
     return methods;
   }
 
-  private addNodeToGraph(graph: EnhancedCodeGraph, node: EnhancedCodeNode): void {
+  private addNodeToGraph(
+    graph: EnhancedCodeGraph,
+    node: EnhancedCodeNode
+  ): void {
     graph.nodes.set(node.id, node);
 
     const fileNodes = graph.fileToNodes.get(node.filePath) || [];
@@ -441,7 +456,7 @@ export class EnhancedCodeGraphService {
     edges.push({
       source,
       target,
-      type
+      type,
     });
     graph.edges.set(source, edges);
   }
@@ -459,22 +474,23 @@ export class EnhancedCodeGraphService {
   private extractModifiers(node: any): string[] {
     const modifiers: string[] = [];
 
-    if (node.async) modifiers.push('async');
-    if (node.static) modifiers.push('static');
-    if ((node as any).accessibility) modifiers.push((node as any).accessibility);
+    if (node.async) modifiers.push("async");
+    if (node.static) modifiers.push("static");
+    if ((node as any).accessibility)
+      modifiers.push((node as any).accessibility);
 
     return modifiers;
   }
 
   private extractTypeString(typeNode: any): string {
-    if (!typeNode) return 'any';
+    if (!typeNode) return "any";
 
-    if (t.isTSStringKeyword(typeNode)) return 'string';
-    if (t.isTSNumberKeyword(typeNode)) return 'number';
-    if (t.isTSBooleanKeyword(typeNode)) return 'boolean';
-    if (t.isTSNullKeyword(typeNode)) return 'null';
-    if (t.isTSUndefinedKeyword(typeNode)) return 'undefined';
-    if (t.isTSVoidKeyword(typeNode)) return 'void';
+    if (t.isTSStringKeyword(typeNode)) return "string";
+    if (t.isTSNumberKeyword(typeNode)) return "number";
+    if (t.isTSBooleanKeyword(typeNode)) return "boolean";
+    if (t.isTSNullKeyword(typeNode)) return "null";
+    if (t.isTSUndefinedKeyword(typeNode)) return "undefined";
+    if (t.isTSVoidKeyword(typeNode)) return "void";
 
     if (t.isTSArrayType(typeNode)) {
       return `${this.extractTypeString(typeNode.elementType)}[]`;
@@ -482,12 +498,12 @@ export class EnhancedCodeGraphService {
 
     if (t.isTSUnionType(typeNode)) {
       const types = typeNode.types.map((t: any) => this.extractTypeString(t));
-      return types.join(' | ');
+      return types.join(" | ");
     }
 
     if (t.isTSIntersectionType(typeNode)) {
       const types = typeNode.types.map((t: any) => this.extractTypeString(t));
-      return types.join(' & ');
+      return types.join(" & ");
     }
 
     if (t.isTSTypeReference(typeNode)) {
@@ -505,7 +521,7 @@ export class EnhancedCodeGraphService {
           return (typeNode.literal as t.NumericLiteral).value.toString();
         }
         if (t.isBooleanLiteral(typeNode.literal)) {
-          return typeNode.literal.value ? 'true' : 'false';
+          return typeNode.literal.value ? "true" : "false";
         }
         if (t.isBigIntLiteral(typeNode.literal)) {
           return `${(typeNode.literal as t.BigIntLiteral).value}n`;
@@ -513,22 +529,38 @@ export class EnhancedCodeGraphService {
       }
     }
 
-    return 'any';
+    return "any";
   }
 
   private isKeyword(name: string): boolean {
     const keywords = [
-      'this', 'super', 'new', 'delete', 'typeof', 'instanceof',
-      'in', 'of', 'void', 'return', 'break', 'continue', 'await',
-      'yield', 'import', 'export', 'default', 'class', 'function'
+      "this",
+      "super",
+      "new",
+      "delete",
+      "typeof",
+      "instanceof",
+      "in",
+      "of",
+      "void",
+      "return",
+      "break",
+      "continue",
+      "await",
+      "yield",
+      "import",
+      "export",
+      "default",
+      "class",
+      "function",
     ];
     return keywords.includes(name);
   }
 
   private buildReverseImportMap(graph: EnhancedCodeGraph): void {
     graph.edges.forEach((edgeList, sourceFile) => {
-      edgeList.forEach(edge => {
-        if (edge.type === 'imports') {
+      edgeList.forEach((edge) => {
+        if (edge.type === "imports") {
           const importTarget = edge.target;
 
           if (!graph.importedBy.has(importTarget)) {
@@ -547,23 +579,27 @@ export class EnhancedCodeGraphService {
   ): string[] {
     const dependents = new Set<string>();
 
-    console.log(`\nFinding dependents for ${selectedFiles.length} selected files...`);
+    console.log(
+      `\nFinding dependents for ${selectedFiles.length} selected files...`
+    );
 
-    selectedFiles.forEach(selectedFile => {
+    selectedFiles.forEach((selectedFile) => {
       // Get the basename without extension for matching
-      const pathParts = selectedFile.split('/');
-      const fileName = pathParts.pop() || '';
-      const baseName = fileName.replace(/\.[^.]+$/, '');
+      const pathParts = selectedFile.split("/");
+      const fileName = pathParts.pop() || "";
+      const baseName = fileName.replace(/\.[^.]+$/, "");
 
-      console.log(`  Checking dependents for: ${selectedFile} (baseName: ${baseName})`);
+      console.log(
+        `  Checking dependents for: ${selectedFile} (baseName: ${baseName})`
+      );
 
       // Method 1: Check all edges for imports that match this file
       graph.edges.forEach((edgeList, sourceFile) => {
         // Skip if source is already in selected files
         if (selectedFiles.includes(sourceFile)) return;
 
-        edgeList.forEach(edge => {
-          if (edge.type === 'imports') {
+        edgeList.forEach((edge) => {
+          if (edge.type === "imports") {
             const importPath = edge.target;
 
             // Match various import patterns
@@ -571,12 +607,16 @@ export class EnhancedCodeGraphService {
               // Direct match on basename (e.g., "./rateLimiter" matches "rateLimiter.ts")
               importPath.endsWith(baseName) ||
               // Match with extension stripped from import
-              importPath.replace(/\.[^.]+$/, '').endsWith(baseName) ||
+              importPath.replace(/\.[^.]+$/, "").endsWith(baseName) ||
               // Match relative path patterns
-              selectedFile.includes(importPath.replace(/^\.\.?\//, '').replace(/^@\//, ''));
+              selectedFile.includes(
+                importPath.replace(/^\.\.?\//, "").replace(/^@\//, "")
+              );
 
             if (isMatch) {
-              console.log(`    Found dependent: ${sourceFile} (imports "${importPath}")`);
+              console.log(
+                `    Found dependent: ${sourceFile} (imports "${importPath}")`
+              );
               dependents.add(sourceFile);
             }
           }
@@ -587,10 +627,12 @@ export class EnhancedCodeGraphService {
       graph.importedBy.forEach((importers, target) => {
         const targetMatches =
           target.includes(baseName) ||
-          baseName.includes(target.replace(/^\.\.?\//, '').replace(/\.[^.]+$/, ''));
+          baseName.includes(
+            target.replace(/^\.\.?\//, "").replace(/\.[^.]+$/, "")
+          );
 
         if (targetMatches) {
-          importers.forEach(importer => {
+          importers.forEach((importer) => {
             if (!selectedFiles.includes(importer)) {
               console.log(`    Found dependent (from importedBy): ${importer}`);
               dependents.add(importer);
@@ -601,7 +643,7 @@ export class EnhancedCodeGraphService {
     });
 
     // Filter to only include files that were actually parsed (known files)
-    const filteredDependents = Array.from(dependents).filter(dep =>
+    const filteredDependents = Array.from(dependents).filter((dep) =>
       allParsedFiles.includes(dep)
     );
 

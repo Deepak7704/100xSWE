@@ -1,5 +1,5 @@
-import type { CodeChunk } from './chunking.service';
-import { Redis } from 'ioredis';
+import type { CodeChunk } from "./chunking.service";
+import { Redis } from "ioredis";
 
 interface BM25Document {
   id: string;
@@ -43,8 +43,27 @@ export class BM25Service {
   private readonly K1 = 1.5;
   private readonly B = 0.75;
   private readonly STOP_WORDS = new Set([
-    'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
-    'of', 'with', 'by', 'from', 'is', 'are', 'was', 'were', 'be', 'been'
+    "the",
+    "a",
+    "an",
+    "and",
+    "or",
+    "but",
+    "in",
+    "on",
+    "at",
+    "to",
+    "for",
+    "of",
+    "with",
+    "by",
+    "from",
+    "is",
+    "are",
+    "was",
+    "were",
+    "be",
+    "been",
   ]);
 
   constructor(redis: Redis, repoId: string) {
@@ -55,13 +74,13 @@ export class BM25Service {
   async buildIndex(chunks: CodeChunk[]): Promise<void> {
     console.log(`Building BM25 index for ${chunks.length} documents\n`);
 
-    const documents = chunks.map(chunk => ({
+    const documents = chunks.map((chunk) => ({
       id: chunk.id,
       filePath: chunk.filePath,
       fileName: chunk.fileName,
       functionName: chunk.functionName,
       tokens: this.tokenize(chunk.content),
-      content: chunk.content
+      content: chunk.content,
     }));
 
     for (const doc of documents) {
@@ -85,14 +104,18 @@ export class BM25Service {
       this.documentFrequency.set(token, docIds.size);
     }
 
-    const totalLength = Array.from(this.documents.values())
-      .reduce((sum, doc) => sum + doc.tokens.length, 0);
+    const totalLength = Array.from(this.documents.values()).reduce(
+      (sum, doc) => sum + doc.tokens.length,
+      0
+    );
     this.avgDocLength = totalLength / this.documents.size;
 
     console.log(`Index Statistics:`);
     console.log(`Total documents: ${this.documents.size}`);
     console.log(`Unique tokens: ${this.invertedIndex.size}`);
-    console.log(`Average document length: ${this.avgDocLength.toFixed(1)} tokens\n`);
+    console.log(
+      `Average document length: ${this.avgDocLength.toFixed(1)} tokens\n`
+    );
 
     await this.saveToRedis();
   }
@@ -105,13 +128,13 @@ export class BM25Service {
       invertedIndex: Object.fromEntries(
         Array.from(this.invertedIndex.entries()).map(([token, docIds]) => [
           token,
-          Array.from(docIds)
+          Array.from(docIds),
         ])
       ),
       tokenFrequency: Object.fromEntries(
         Array.from(this.tokenFrequency.entries()).map(([docId, freqMap]) => [
           docId,
-          Object.fromEntries(freqMap)
+          Object.fromEntries(freqMap),
         ])
       ),
       documentFrequency: Object.fromEntries(this.documentFrequency),
@@ -120,14 +143,16 @@ export class BM25Service {
         timestamp: new Date().toISOString(),
         totalDocuments: this.documents.size,
         uniqueTokens: this.invertedIndex.size,
-        repoId: this.repoId
-      }
+        repoId: this.repoId,
+      },
     };
 
     const key = `bm25:index:${this.repoId}`;
     await this.redis.set(key, JSON.stringify(index));
     console.log(`BM25 index saved to Redis at key: ${key}`);
-    console.log(`  Storage: ${(JSON.stringify(index).length / 1024).toFixed(2)} KB\n`);
+    console.log(
+      `  Storage: ${(JSON.stringify(index).length / 1024).toFixed(2)} KB\n`
+    );
   }
 
   async loadFromRedis(): Promise<boolean> {
@@ -148,19 +173,19 @@ export class BM25Service {
     this.invertedIndex = new Map(
       Object.entries(index.invertedIndex).map(([token, docIds]) => [
         token,
-        new Set(docIds)
+        new Set(docIds),
       ])
     );
     this.tokenFrequency = new Map(
       Object.entries(index.tokenFrequency).map(([docId, freqObj]) => [
         docId,
-        new Map(Object.entries(freqObj))
+        new Map(Object.entries(freqObj)),
       ])
     );
     this.documentFrequency = new Map(
       Object.entries(index.documentFrequency).map(([token, count]) => [
         token,
-        count as number
+        count as number,
       ])
     );
     this.avgDocLength = index.avgDocLength;
@@ -177,7 +202,7 @@ export class BM25Service {
     console.log(`BM25 Search: "${query}"\n`);
 
     const queryTokens = this.tokenize(query);
-    console.log(`Query tokens: ${queryTokens.join(', ')}\n`);
+    console.log(`Query tokens: ${queryTokens.join(", ")}\n`);
 
     const scores = new Map<string, number>();
 
@@ -193,7 +218,9 @@ export class BM25Service {
 
         const bm25Score =
           (idf * freq * (this.K1 + 1)) /
-          (freq + this.K1 * (1 - this.B + this.B * (doc.tokens.length / this.avgDocLength)));
+          (freq +
+            this.K1 *
+              (1 - this.B + this.B * (doc.tokens.length / this.avgDocLength)));
 
         scores.set(docId, (scores.get(docId) || 0) + bm25Score);
       }
@@ -204,7 +231,7 @@ export class BM25Service {
         documentId: docId,
         score: score,
         rank: 0,
-        metadata: this.documents.get(docId)!
+        metadata: this.documents.get(docId)!,
       }))
       .sort((a, b) => b.score - a.score);
 
@@ -213,11 +240,15 @@ export class BM25Service {
     });
 
     const topResults = results.slice(0, topK);
-    console.log(`Found ${results.length} matches, returning top ${topResults.length}`);
-    topResults.slice(0, 5).forEach(result => {
-      console.log(`${result.rank}. ${result.metadata.filePath} (score: ${result.score.toFixed(2)})`);
+    console.log(
+      `Found ${results.length} matches, returning top ${topResults.length}`
+    );
+    topResults.slice(0, 5).forEach((result) => {
+      console.log(
+        `${result.rank}. ${result.metadata.filePath} (score: ${result.score.toFixed(2)})`
+      );
     });
-    console.log('');
+    console.log("");
 
     return topResults;
   }
@@ -225,9 +256,9 @@ export class BM25Service {
   private tokenize(text: string): string[] {
     return text
       .toLowerCase()
-      .replace(/[^a-z0-9_\s]/g, ' ')
+      .replace(/[^a-z0-9_\s]/g, " ")
       .split(/\s+/)
-      .filter(token => token.length > 1 && !this.STOP_WORDS.has(token));
+      .filter((token) => token.length > 1 && !this.STOP_WORDS.has(token));
   }
 
   async removeFile(filePath: string): Promise<void> {
@@ -273,8 +304,10 @@ export class BM25Service {
       }
 
       if (this.documents.size > 0) {
-        const totalLength = Array.from(this.documents.values())
-          .reduce((sum, doc) => sum + doc.tokens.length, 0);
+        const totalLength = Array.from(this.documents.values()).reduce(
+          (sum, doc) => sum + doc.tokens.length,
+          0
+        );
         this.avgDocLength = totalLength / this.documents.size;
       } else {
         this.avgDocLength = 0;
@@ -282,7 +315,9 @@ export class BM25Service {
 
       await this.saveToRedis();
 
-      console.log(`BM25: Removed ${docIdsToRemove.length} chunks for ${filePath}`);
+      console.log(
+        `BM25: Removed ${docIdsToRemove.length} chunks for ${filePath}`
+      );
     } catch (error: any) {
       console.error(`BM25: Failed to remove ${filePath}:`, error.message);
       throw error;
@@ -349,22 +384,27 @@ export class BM25Service {
     }
 
     if (this.documents.size > 0) {
-      const totalLength = Array.from(this.documents.values())
-        .reduce((sum, doc) => sum + doc.tokens.length, 0);
+      const totalLength = Array.from(this.documents.values()).reduce(
+        (sum, doc) => sum + doc.tokens.length,
+        0
+      );
       this.avgDocLength = totalLength / this.documents.size;
     } else {
       this.avgDocLength = 0;
     }
   }
 
-  private async addFileChunks(filePath: string, chunks: CodeChunk[]): Promise<void> {
-    const documents = chunks.map(chunk => ({
+  private async addFileChunks(
+    filePath: string,
+    chunks: CodeChunk[]
+  ): Promise<void> {
+    const documents = chunks.map((chunk) => ({
       id: chunk.id,
       filePath: chunk.filePath,
       fileName: chunk.fileName,
       functionName: chunk.functionName,
       tokens: this.tokenize(chunk.content),
-      content: chunk.content
+      content: chunk.content,
     }));
 
     for (const doc of documents) {
@@ -389,8 +429,10 @@ export class BM25Service {
       this.documentFrequency.set(token, docIds.size);
     }
 
-    const totalLength = Array.from(this.documents.values())
-      .reduce((sum, doc) => sum + doc.tokens.length, 0);
+    const totalLength = Array.from(this.documents.values()).reduce(
+      (sum, doc) => sum + doc.tokens.length,
+      0
+    );
     this.avgDocLength = totalLength / this.documents.size;
   }
 }

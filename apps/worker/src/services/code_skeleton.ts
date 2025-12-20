@@ -1,21 +1,20 @@
-import type{ 
-  EnhancedCodeGraph, 
-  EnhancedCodeNode, 
+import type {
+  EnhancedCodeGraph,
+  EnhancedCodeNode,
   FunctionSignature,
   MethodInfo,
-  PropertyInfo 
-} from './code_graph.service';
-
+  PropertyInfo,
+} from "./code_graph.service";
 
 export interface CodeSkeleton {
   filePath: string;
   fileName: string;
-  
+
   imports: ImportSkeleton[];
   exports: ExportSkeleton[];
   functions: FunctionSkeleton[];
   classes: ClassSkeleton[];
-  
+
   stats: {
     totalFunctions: number;
     totalClasses: number;
@@ -54,26 +53,31 @@ export interface ClassSkeleton {
   linesOfCode: number;
   extendsFrom?: string;
   isExported: boolean;
-  properties: PropertyInfo[];      // ← REUSE from code_graph.service
+  properties: PropertyInfo[]; // ← REUSE from code_graph.service
   methods: MethodInfo[];
 }
 
 export class CodeSkeletonService {
-  
   generateSkeleton(graph: EnhancedCodeGraph, filePath: string): CodeSkeleton {
-    const fileName = filePath.split('/').pop() || 'unknown';
+    const fileName = filePath.split("/").pop() || "unknown";
     const fileNodes = this.getFileNodes(graph, filePath);
-    
+
     console.log(`  Generating skeleton for ${fileName}...`);
 
     const reverseCallGraph = this.buildReverseCallGraph(fileNodes);
 
     const imports = this.extractImportSkeletons(fileNodes, graph);
     const exports = this.extractExportSkeletons(fileNodes);
-    const functions = this.extractFunctionSkeletons(fileNodes, reverseCallGraph);
+    const functions = this.extractFunctionSkeletons(
+      fileNodes,
+      reverseCallGraph
+    );
     const classes = this.extractClassSkeletons(fileNodes);
 
-    const totalLoc = fileNodes.reduce((sum, n) => sum + (n.location?.lineCount || 0), 0);
+    const totalLoc = fileNodes.reduce(
+      (sum, n) => sum + (n.location?.lineCount || 0),
+      0
+    );
 
     return {
       filePath,
@@ -87,23 +91,23 @@ export class CodeSkeletonService {
         totalClasses: classes.length,
         totalImports: imports.length,
         totalExports: exports.length,
-        linesOfCode: totalLoc
-      }
+        linesOfCode: totalLoc,
+      },
     };
   }
 
   formatSkeletonForLLM(skeleton: CodeSkeleton): string {
-    let output = '';
+    let output = "";
 
-    output += `${'═'.repeat(80)}\n`;
+    output += `${"═".repeat(80)}\n`;
     output += `FILE: ${skeleton.fileName}\n`;
     output += `Path: ${skeleton.filePath}\n`;
     output += `Stats: ${skeleton.stats.totalFunctions} functions, ${skeleton.stats.totalClasses} classes, ${skeleton.stats.totalImports} imports, ~${skeleton.stats.linesOfCode} lines\n`;
-    output += `${'═'.repeat(80)}\n\n`;
+    output += `${"═".repeat(80)}\n\n`;
 
     if (skeleton.imports.length > 0) {
       output += `IMPORTS (${skeleton.imports.length})\n`;
-      skeleton.imports.forEach(imp => {
+      skeleton.imports.forEach((imp) => {
         output += `  import ${imp.name} from "${imp.source}"\n`;
       });
       output += `\n`;
@@ -111,7 +115,7 @@ export class CodeSkeletonService {
 
     if (skeleton.exports.length > 0) {
       output += `EXPORTS (${skeleton.exports.length})\n`;
-      skeleton.exports.forEach(exp => {
+      skeleton.exports.forEach((exp) => {
         output += `  export ${exp.type} ${exp.name}\n`;
       });
       output += `\n`;
@@ -119,22 +123,22 @@ export class CodeSkeletonService {
 
     if (skeleton.functions.length > 0) {
       output += `FUNCTIONS (${skeleton.functions.length})\n\n`;
-      skeleton.functions.forEach(func => {
-        output += `  ${func.isExported ? '[EXPORTED]' : '[PRIVATE]'} ${func.name}\n`;
+      skeleton.functions.forEach((func) => {
+        output += `  ${func.isExported ? "[EXPORTED]" : "[PRIVATE]"} ${func.name}\n`;
         output += `    ${func.signature}\n`;
         output += `    Lines: ${func.lineRange} (${func.linesOfCode} lines)\n`;
-        
+
         if (func.calls.length > 0) {
-          output += `    Calls: ${func.calls.join(', ')}\n`;
+          output += `    Calls: ${func.calls.join(", ")}\n`;
         }
         if (func.calledBy.length > 0) {
-          output += `    Called by: ${func.calledBy.join(', ')}\n`;
+          output += `    Called by: ${func.calledBy.join(", ")}\n`;
         }
         if (func.dependencies.length > 0) {
-          output += `    Uses: ${func.dependencies.join(', ')}\n`;
+          output += `    Uses: ${func.dependencies.join(", ")}\n`;
         }
         if (func.errors.length > 0) {
-          output += `    Throws: ${func.errors.join(', ')}\n`;
+          output += `    Throws: ${func.errors.join(", ")}\n`;
         }
         output += `\n`;
       });
@@ -142,28 +146,31 @@ export class CodeSkeletonService {
 
     if (skeleton.classes.length > 0) {
       output += `CLASSES (${skeleton.classes.length})\n\n`;
-      skeleton.classes.forEach(cls => {
-        output += `  ${cls.isExported ? '[EXPORTED]' : '[PRIVATE]'} class ${cls.name}\n`;
+      skeleton.classes.forEach((cls) => {
+        output += `  ${cls.isExported ? "[EXPORTED]" : "[PRIVATE]"} class ${cls.name}\n`;
         output += `    Lines: ${cls.lineRange} (${cls.linesOfCode} lines)\n`;
-        
+
         if (cls.extendsFrom) {
           output += `    Extends: ${cls.extendsFrom}\n`;
         }
-        
+
         if (cls.properties.length > 0) {
           output += `    Properties (${cls.properties.length}):\n`;
-          cls.properties.forEach(prop => {
-            output += `      ${prop.accessLevel || 'public'} ${prop.name}: ${prop.type || 'any'}${prop.isOptional ? '?' : ''}\n`;
+          cls.properties.forEach((prop) => {
+            output += `      ${prop.accessLevel || "public"} ${prop.name}: ${prop.type || "any"}${prop.isOptional ? "?" : ""}\n`;
           });
         }
-        
+
         if (cls.methods.length > 0) {
           output += `    Methods (${cls.methods.length}):\n`;
-          cls.methods.forEach(method => {
+          cls.methods.forEach((method) => {
             const sig = this.buildSignatureString(method.signature);
-            output += `      ${method.accessLevel || 'public'} ${sig}\n`;
-            if (method.signature.calledFunctions && method.signature.calledFunctions.length > 0) {
-              output += `        Calls: ${method.signature.calledFunctions.join(', ')}\n`;
+            output += `      ${method.accessLevel || "public"} ${sig}\n`;
+            if (
+              method.signature.calledFunctions &&
+              method.signature.calledFunctions.length > 0
+            ) {
+              output += `        Calls: ${method.signature.calledFunctions.join(", ")}\n`;
             }
           });
         }
@@ -171,22 +178,29 @@ export class CodeSkeletonService {
       });
     }
 
-    output += `${'═'.repeat(80)}\n`;
+    output += `${"═".repeat(80)}\n`;
 
     return output;
   }
 
-  private getFileNodes(graph: EnhancedCodeGraph, filePath: string): EnhancedCodeNode[] {
+  private getFileNodes(
+    graph: EnhancedCodeGraph,
+    filePath: string
+  ): EnhancedCodeNode[] {
     const nodeIds = graph.fileToNodes.get(filePath) || [];
-    return nodeIds.map(id => graph.nodes.get(id)).filter(Boolean) as EnhancedCodeNode[];
+    return nodeIds
+      .map((id) => graph.nodes.get(id))
+      .filter(Boolean) as EnhancedCodeNode[];
   }
 
-  private buildReverseCallGraph(fileNodes: EnhancedCodeNode[]): Map<string, string[]> {
+  private buildReverseCallGraph(
+    fileNodes: EnhancedCodeNode[]
+  ): Map<string, string[]> {
     const reverseGraph = new Map<string, string[]>();
 
-    fileNodes.forEach(node => {
-      if (node.type === 'function' && node.signature?.calledFunctions) {
-        node.signature.calledFunctions.forEach(calledFunc => {
+    fileNodes.forEach((node) => {
+      if (node.type === "function" && node.signature?.calledFunctions) {
+        node.signature.calledFunctions.forEach((calledFunc) => {
           const callers = reverseGraph.get(calledFunc) || [];
           callers.push(node.name);
           reverseGraph.set(calledFunc, callers);
@@ -202,29 +216,31 @@ export class CodeSkeletonService {
     graph: EnhancedCodeGraph
   ): ImportSkeleton[] {
     const imports: ImportSkeleton[] = [];
-    
+
     fileNodes
-      .filter(n => n.type === 'import')
-      .forEach(node => {
+      .filter((n) => n.type === "import")
+      .forEach((node) => {
         const edges = graph.edges.get(node.filePath) || [];
-        const importEdge = edges.find(e => e.type === 'imports');
-        const source = importEdge?.target || 'unknown';
-        
+        const importEdge = edges.find((e) => e.type === "imports");
+        const source = importEdge?.target || "unknown";
+
         imports.push({
           name: node.name,
-          source
+          source,
         });
       });
-    
+
     return imports;
   }
 
-  private extractExportSkeletons(fileNodes: EnhancedCodeNode[]): ExportSkeleton[] {
+  private extractExportSkeletons(
+    fileNodes: EnhancedCodeNode[]
+  ): ExportSkeleton[] {
     return fileNodes
-      .filter(n => n.isExported)
-      .map(node => ({
+      .filter((n) => n.isExported)
+      .map((node) => ({
         name: node.name,
-        type: node.type
+        type: node.type,
       }));
   }
 
@@ -233,8 +249,8 @@ export class CodeSkeletonService {
     reverseCallGraph: Map<string, string[]>
   ): FunctionSkeleton[] {
     return fileNodes
-      .filter(n => n.type === 'function')
-      .map(node => {
+      .filter((n) => n.type === "function")
+      .map((node) => {
         const sig = node.signature!;
         const signatureStr = this.buildSignatureString(sig);
         const lineRange = `${node.location.start.line}-${node.location.end.line}`;
@@ -249,15 +265,17 @@ export class CodeSkeletonService {
           calls: sig.calledFunctions || [],
           calledBy: reverseCallGraph.get(node.name) || [],
           dependencies: node.context?.externalDependencies || [],
-          errors: node.context?.thrownErrors || []
+          errors: node.context?.thrownErrors || [],
         };
       });
   }
 
-  private extractClassSkeletons(fileNodes: EnhancedCodeNode[]): ClassSkeleton[] {
+  private extractClassSkeletons(
+    fileNodes: EnhancedCodeNode[]
+  ): ClassSkeleton[] {
     return fileNodes
-      .filter(n => n.type === 'class')
-      .map(node => {
+      .filter((n) => n.type === "class")
+      .map((node) => {
         const lineRange = `${node.location.start.line}-${node.location.end.line}`;
 
         return {
@@ -267,19 +285,19 @@ export class CodeSkeletonService {
           extendsFrom: node.extendsFrom,
           isExported: node.isExported || false,
           properties: node.properties || [],
-          methods: node.methods || []
+          methods: node.methods || [],
         };
       });
   }
 
   private buildSignatureString(sig: FunctionSignature): string {
-    const params = sig.parameters.map(p => 
-      `${p.name}${p.optional ? '?' : ''}: ${p.type || 'any'}`
-    ).join(', ');
-    
-    const returnType = sig.returnType || 'void';
-    const prefix = sig.isAsync ? 'async ' : '';
-    
+    const params = sig.parameters
+      .map((p) => `${p.name}${p.optional ? "?" : ""}: ${p.type || "any"}`)
+      .join(", ");
+
+    const returnType = sig.returnType || "void";
+    const prefix = sig.isAsync ? "async " : "";
+
     return `${prefix}${sig.name}(${params}): ${returnType}`;
   }
 }

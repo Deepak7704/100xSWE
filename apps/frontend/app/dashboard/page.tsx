@@ -34,24 +34,25 @@ export default function Dashboard() {
 
     try {
       setLoadingRepos(true);
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+      const backendUrl =
+        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
       const response = await fetch(`${backendUrl}/auth/repos`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch repositories');
+        throw new Error("Failed to fetch repositories");
       }
 
       const data = await response.json();
       setRepos(data.repos);
       setFilteredRepos(data.repos);
     } catch (error) {
-      console.error('[Dashboard] Error fetching repos:', error);
-      alert('Failed to fetch repositories. Please try again.');
+      console.error("[Dashboard] Error fetching repos:", error);
+      alert("Failed to fetch repositories. Please try again.");
     } finally {
       setLoadingRepos(false);
     }
@@ -67,9 +68,10 @@ export default function Dashboard() {
     if (searchQuery.trim() === "") {
       setFilteredRepos(repos);
     } else {
-      const filtered = repos.filter(repo =>
-        repo.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        repo.name.toLowerCase().includes(searchQuery.toLowerCase())
+      const filtered = repos.filter(
+        (repo) =>
+          repo.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          repo.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
       setFilteredRepos(filtered);
     }
@@ -85,19 +87,20 @@ export default function Dashboard() {
     e.preventDefault();
 
     if (!selectedRepo || !task.trim()) {
-      alert('Please select a repository and describe your task');
+      alert("Please select a repository and describe your task");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+      const backendUrl =
+        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
       const response = await fetch(`${backendUrl}/api/chat`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           repoUrl: selectedRepo.html_url,
@@ -114,15 +117,15 @@ export default function Dashboard() {
         router.push(`/chat?jobId=${data.jobId}`);
       }, 1500);
     } catch (error) {
-      console.error('Error submitting task:', error);
-      alert('Failed to submit task. Please try again.');
+      console.error("Error submitting task:", error);
+      alert("Failed to submit task. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault();
       handleSubmit(e as unknown as React.FormEvent);
     }
@@ -134,7 +137,7 @@ export default function Dashboard() {
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-10 w-10 border-2 border-foreground border-t-transparent mb-4"></div>
           <p className="text-muted-foreground text-sm">
-            {isLoading ? 'Loading...' : 'Fetching repositories...'}
+            {isLoading ? "Loading..." : "Fetching repositories..."}
           </p>
         </div>
       </div>
@@ -157,15 +160,15 @@ export default function Dashboard() {
               width={36}
               height={36}
             />
-            <h1 className="text-xl font-bold text-foreground">
-              100xSWE
-            </h1>
+            <h1 className="text-xl font-bold text-foreground">100xSWE</h1>
           </div>
 
           {/* User Profile */}
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium text-foreground">{user.name || user.username}</p>
+              <p className="text-sm font-medium text-foreground">
+                {user.name || user.username}
+              </p>
               <p className="text-xs text-muted-foreground">{user.email}</p>
             </div>
             <img
@@ -197,8 +200,18 @@ export default function Dashboard() {
           <div className="relative">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                <svg
+                  className="w-5 h-5 text-muted-foreground"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
                 </svg>
               </div>
               <input
@@ -215,7 +228,7 @@ export default function Dashboard() {
               {selectedRepo && (
                 <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
                   <span className="px-2 py-1 bg-gray-100 text-foreground rounded-lg text-xs font-medium">
-                    {selectedRepo.language || 'Code'}
+                    {selectedRepo.language || "Code"}
                   </span>
                 </div>
               )}
@@ -229,14 +242,19 @@ export default function Dashboard() {
                     key={repo.id}
                     type="button"
                     onClick={() => handleRepoSelect(repo)}
-                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${index === 0 ? 'rounded-t-2xl' : ''
-                      } ${index === filteredRepos.length - 1 ? 'rounded-b-2xl' : ''}`}
+                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                      index === 0 ? "rounded-t-2xl" : ""
+                    } ${index === filteredRepos.length - 1 ? "rounded-b-2xl" : ""}`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-foreground truncate">{repo.full_name}</p>
+                        <p className="font-medium text-foreground truncate">
+                          {repo.full_name}
+                        </p>
                         {repo.description && (
-                          <p className="text-sm text-muted-foreground truncate mt-0.5">{repo.description}</p>
+                          <p className="text-sm text-muted-foreground truncate mt-0.5">
+                            {repo.description}
+                          </p>
                         )}
                       </div>
                       <div className="flex items-center gap-2 ml-4">
@@ -259,7 +277,9 @@ export default function Dashboard() {
 
             {showDropdown && filteredRepos.length === 0 && searchQuery && (
               <div className="absolute z-10 w-full mt-2 bg-background border border-gray-200 rounded-2xl shadow-xl p-6">
-                <p className="text-muted-foreground text-center text-sm">No repositories match your search</p>
+                <p className="text-muted-foreground text-center text-sm">
+                  No repositories match your search
+                </p>
               </div>
             )}
 
@@ -268,23 +288,44 @@ export default function Dashboard() {
               <div className="mt-4 bg-gray-50 rounded-2xl p-6">
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
-                    <svg className="w-5 h-5 text-foreground" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    <svg
+                      className="w-5 h-5 text-foreground"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-foreground mb-1">No Repositories Found</h3>
+                    <h3 className="font-semibold text-foreground mb-1">
+                      No Repositories Found
+                    </h3>
                     <p className="text-sm text-muted-foreground mb-4">
                       Install the GitHub App to access your repositories.
                     </p>
                     <button
                       onClick={() => {
-                        window.location.href = 'https://github.com/apps/100xSWE/installations/new';
+                        window.location.href =
+                          "https://github.com/apps/100xSWE/installations/new";
                       }}
                       className="inline-flex items-center gap-2 px-4 py-2 bg-foreground text-background font-medium rounded-full transition-colors hover:bg-gray-800"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                        />
                       </svg>
                       Install GitHub App
                     </button>
@@ -314,7 +355,10 @@ export default function Dashboard() {
             <div className="flex items-center justify-between mt-2">
               {selectedRepo && (
                 <p className="text-sm text-muted-foreground">
-                  Working on <span className="font-medium text-foreground">{selectedRepo.name}</span>
+                  Working on{" "}
+                  <span className="font-medium text-foreground">
+                    {selectedRepo.name}
+                  </span>
                 </p>
               )}
             </div>
@@ -328,14 +372,29 @@ export default function Dashboard() {
           >
             {isSubmitting ? (
               <span className="flex items-center justify-center gap-2">
-                <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <svg
+                  className="animate-spin h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
                 </svg>
                 Generating...
               </span>
             ) : (
-              'Generate Code'
+              "Generate Code"
             )}
           </button>
         </form>
@@ -345,20 +404,53 @@ export default function Dashboard() {
           <div className="mt-8 p-6 bg-gray-50 rounded-2xl">
             <div className="flex items-start gap-4">
               <div className="w-10 h-10 bg-foreground rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 text-background" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                <svg
+                  className="w-5 h-5 text-background"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-foreground mb-2">Task Submitted</h3>
+                <h3 className="font-semibold text-foreground mb-2">
+                  Task Submitted
+                </h3>
                 <div className="text-sm text-muted-foreground space-y-1">
-                  <p>Job ID: <span className="font-mono text-foreground">{jobStatus.jobId || jobStatus.codeGenJobId}</span></p>
-                  <p>Status: <span className="text-foreground">{jobStatus.message}</span></p>
+                  <p>
+                    Job ID:{" "}
+                    <span className="font-mono text-foreground">
+                      {jobStatus.jobId || jobStatus.codeGenJobId}
+                    </span>
+                  </p>
+                  <p>
+                    Status:{" "}
+                    <span className="text-foreground">{jobStatus.message}</span>
+                  </p>
                   {jobStatus.indexing && (
                     <div className="mt-3 flex items-center gap-2 text-foreground">
-                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      <svg
+                        className="animate-spin h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
                       </svg>
                       Indexing repository...
                     </div>
