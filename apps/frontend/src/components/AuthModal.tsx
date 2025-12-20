@@ -68,9 +68,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         // If we can't check installations, show install step to be safe
         setStep('install');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[AuthModal] OAuth error:', err);
-      setError(err.message || 'Failed to authenticate with GitHub');
+      setError(err instanceof Error ? err.message : 'Failed to authenticate with GitHub');
     } finally {
       setLoading(false);
     }

@@ -1,11 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 
-export default function InstallationCallback() {
+interface Installation {
+  installationId: number;
+  targetType: string;
+  account: {
+    login: string;
+    avatarUrl: string;
+  };
+}
+
+function InstallationCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, token, isLoading } = useAuth();
@@ -35,7 +44,7 @@ export default function InstallationCallback() {
         }
 
         const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
-        
+
         // Polling configuration
         const maxAttempts = 15; // 30 seconds total
         const interval = 2000; // 2 seconds
@@ -44,20 +53,20 @@ export default function InstallationCallback() {
 
         while (attempts < maxAttempts && !verified) {
           setMessage(attempts === 0 ? 'Processing installation...' : 'Still verifying...');
-          
+
           try {
             const response = await fetch(`${backendUrl}/installation/list`, {
               headers: {
                 'Authorization': `Bearer ${token}`
               }
             });
-            
+
             if (response.ok) {
               const data = await response.json();
               console.log(`[Installation Callback] Attempt ${attempts + 1}:`, data);
 
               const installation = data.installations?.find(
-                (inst: any) => inst.installationId === parseInt(installationId)
+                (inst: Installation) => inst.installationId === parseInt(installationId)
               );
 
               if (installation) {
@@ -65,7 +74,7 @@ export default function InstallationCallback() {
                 setStatus('success');
                 setMessage('Installation successful! Redirecting to dashboard...');
                 verified = true;
-                
+
                 // Redirect to dashboard after short delay
                 setTimeout(() => {
                   router.push('/dashboard');
@@ -88,10 +97,10 @@ export default function InstallationCallback() {
           throw new Error('Installation verification timed out. It may still be processing.');
         }
 
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('[Installation Callback] Error:', error);
         setStatus('error');
-        setMessage(error.message || 'Failed to verify installation');
+        setMessage(error instanceof Error ? error.message : 'Failed to verify installation');
 
         // Redirect to dashboard anyway after 5 seconds
         setTimeout(() => {
@@ -154,5 +163,26 @@ export default function InstallationCallback() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function InstallationCallback() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full mx-4">
+          <div className="text-center">
+            <div className="mb-6">
+              <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
+                <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">Loading...</h2>
+          </div>
+        </div>
+      </div>
+    }>
+      <InstallationCallbackContent />
+    </Suspense>
   );
 }

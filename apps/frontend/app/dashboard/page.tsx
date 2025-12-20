@@ -3,7 +3,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
-import { GitHubRepo } from "@/types";
+import { GitHubRepo, ChatResponse } from "@/types";
 import Image from "next/image";
 import octopusLogo from "@/assets/octopus.png";
 
@@ -19,7 +19,7 @@ export default function Dashboard() {
   const [task, setTask] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [jobStatus, setJobStatus] = useState<any>(null);
+  const [jobStatus, setJobStatus] = useState<ChatResponse | null>(null);
   const [loadingRepos, setLoadingRepos] = useState(true);
 
   // Redirect if not authenticated
@@ -124,7 +124,7 @@ export default function Dashboard() {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault();
-      handleSubmit(e as any);
+      handleSubmit(e as unknown as React.FormEvent);
     }
   };
 
@@ -229,9 +229,8 @@ export default function Dashboard() {
                     key={repo.id}
                     type="button"
                     onClick={() => handleRepoSelect(repo)}
-                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                      index === 0 ? 'rounded-t-2xl' : ''
-                    } ${index === filteredRepos.length - 1 ? 'rounded-b-2xl' : ''}`}
+                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${index === 0 ? 'rounded-t-2xl' : ''
+                      } ${index === filteredRepos.length - 1 ? 'rounded-b-2xl' : ''}`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">

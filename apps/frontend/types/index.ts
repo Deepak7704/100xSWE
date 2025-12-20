@@ -32,7 +32,7 @@ export interface Job {
   jobId: string;
   state: 'waiting' | 'active' | 'completed' | 'failed';
   progress: number;
-  result?: any;
+  result?: unknown;
 }
 
 // Response from /api/chat endpoint
@@ -40,6 +40,7 @@ export interface ChatResponse {
   message: string;
   indexing: boolean;
   jobId?: string;
+  codeGenJobId?: string;
   indexingJobId?: string;
   repoId: string;
   statusUrl: string;

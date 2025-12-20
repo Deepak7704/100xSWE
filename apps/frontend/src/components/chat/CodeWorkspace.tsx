@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import E2BSandbox from "./Sandbox";
 import GitDiff from "./GitDiff";
 import { ExternalLink } from "lucide-react";
+import { Job } from "@/types";
 
 interface CodeWorkspaceProps {
   jobId: string;
-  status: any;
+  status: Job | null;
   isCompleted: boolean;
   prUrl?: string;
   token: string | null;
