@@ -18,7 +18,6 @@ function OAuthCallbackContent() {
   });
 
   useEffect(() => {
-
     // Get token and user from URL query parameters
     const token = searchParams.get("token");
     const userJson = searchParams.get("user");
