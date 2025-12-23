@@ -113,8 +113,11 @@ export default function Dashboard() {
 
       setTask("");
 
+      // Handle both response formats: indexing (codeGenJobId) and direct (jobId)
+      const actualJobId = data.codeGenJobId || data.jobId;
+
       setTimeout(() => {
-        router.push(`/chat?jobId=${data.jobId}`);
+        router.push(`/chat?jobId=${actualJobId}`);
       }, 1500);
     } catch (error) {
       console.error("Error submitting task:", error);
@@ -242,9 +245,8 @@ export default function Dashboard() {
                     key={repo.id}
                     type="button"
                     onClick={() => handleRepoSelect(repo)}
-                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                      index === 0 ? "rounded-t-2xl" : ""
-                    } ${index === filteredRepos.length - 1 ? "rounded-b-2xl" : ""}`}
+                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${index === 0 ? "rounded-t-2xl" : ""
+                      } ${index === filteredRepos.length - 1 ? "rounded-b-2xl" : ""}`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">

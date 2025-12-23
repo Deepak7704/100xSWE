@@ -233,12 +233,15 @@ app.get("/api/status/:jobId", authenticateUser, async (req, res) => {
       return res.status(400).json({ error: "Valid Job ID is required" });
     }
 
+    console.log(`[Job Status] Fetching job ${jobId} for user ${userId}`);
     const job = await chatQueue.getJob(jobId);
 
     if (!job) {
+      console.log(`[Job Status] Job ${jobId} not found in queue`);
       return res.status(404).json({ error: "Job not found" });
     }
 
+    console.log(`[Job Status] Job ${jobId} found, checking ownership`);
     if (job.data.userId !== userId) {
       console.log(
         `[Job Status] User ${userId} attempted to access job ${job.id} owned by ${job.data.userId}`
@@ -248,9 +251,12 @@ app.get("/api/status/:jobId", authenticateUser, async (req, res) => {
         .json({ error: "Forbidden: You do not have access to this job" });
     }
 
+    const state = await job.getState();
+    console.log(`[Job Status] Job ${jobId} state: ${state}, progress: ${job.progress}`);
+
     res.json({
       jobId: job.id,
-      state: await job.getState(),
+      state: state,
       progress: job.progress,
       result: job.returnvalue,
     });

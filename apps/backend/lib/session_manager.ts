@@ -56,18 +56,33 @@ export async function getSession(sessionId: string): Promise<Session | null> {
     console.log("[Session] getSession called with empty sessionid");
     return null;
   }
+
   const redisKey = `${SESSION_PREFIX}${sessionId}`;
+
   try {
-    const sessionJson = await connection.get(redisKey);
+    // Add 3-second timeout to prevent hanging
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Redis get timeout after 3s')), 3000)
+    );
+
+    const sessionJson = await Promise.race([
+      connection.get(redisKey),
+      timeoutPromise
+    ]) as string | null;
+
     if (!sessionJson) {
       console.log(`[Session] Session ${sessionId} not found`);
       return null;
     }
+
     const session = JSON.parse(sessionJson) as Session;
     return session;
   } catch (error) {
-    console.error(`[Session] Error retrieving session ${sessionId}`, error);
-
+    if (error instanceof Error && error.message.includes('timeout')) {
+      console.error(`[Session] TIMEOUT retrieving session ${sessionId} - Redis connection slow`);
+    } else {
+      console.error(`[Session] Error retrieving session ${sessionId}`, error);
+    }
     return null;
   }
 }

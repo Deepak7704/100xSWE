@@ -1,0 +1,119 @@
+
+services:
+  # Redis Service (BullMQ Queue & Session Storage)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    # DNS configuration for network connectivity
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
+    networks:
+      - openswe-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # Node Environment
+      - NODE_ENV=production
+      
+      # PostgreSQL Database
+      - DATABASE_URL=${DATABASE_URL}
+      
+      # Redis Configuration (Docker service)
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      
+      # GitHub App Configuration
+      - GITHUB_APP_ID=${GITHUB_APP_ID}
+      - GITHUB_APP_PRIVATE_KEY=${GITHUB_APP_PRIVATE_KEY}
+      - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
+      
+      # GitHub OAuth Configuration
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - GITHUB_CALLBACK_URL=${GITHUB_CALLBACK_URL}
+      - GITHUB_ACCESS_TOKEN=${GITHUB_ACCESS_TOKEN}
+      
+      # JWT Authentication
+      - JWT_SECRET=${JWT_SECRET}
+      
+      # Application URLs
+      - PORT=8000
+      - FRONTEND_URL=${FRONTEND_URL}
+    restart: unless-stopped
+    # DNS configuration for external API calls (GitHub OAuth, etc.)
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
+    networks:
+      - openswe-network
+    depends_on:
+      redis:
+        condition: service_healthy
+      worker:
+        condition: service_started
+    command: ["bun", "run", "--filter=@openswe/backend", "start"]
+
+  worker:
+    build: .
+    environment:
+      # Node Environment
+      - NODE_ENV=production
+      
+      # PostgreSQL Database
+      - DATABASE_URL=${DATABASE_URL}
+      
+      # Redis Configuration (Docker service)
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      
+      # GitHub Configuration
+      - GITHUB_ACCESS_TOKEN=${GITHUB_ACCESS_TOKEN}
+      
+      # AI/LLM Services
+      - GOOGLE_GENERATIVE_AI_API_KEY=${GOOGLE_GENERATIVE_AI_API_KEY}
+
+      
+      # E2B Sandbox (Code Execution)
+      - E2B_API_KEY=${E2B_API_KEY}
+      
+      # Pinecone Vector Database
+      - PINECONE_API_KEY=${PINECONE_API_KEY}
+      - PINECONE_HOST=${PINECONE_HOST}
+    restart: unless-stopped
+    # DNS configuration for external API calls (GitHub, OpenAI, etc.)
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
+    networks:
+      - openswe-network
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: ["bun", "run", "--filter=@openswe/worker", "start"]
+
+# Network configuration
+networks:
+  openswe-network:
+    driver: bridge
+
+# Persistent volumes
+volumes:
+  redis_data:
+    driver: local

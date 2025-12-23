@@ -1,7 +1,6 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
 import crypto from "crypto";
-import axios from "axios";
 import { Octokit } from "@octokit/rest";
 import {
   createSession,
@@ -21,6 +20,15 @@ const GITHUB_CALLBACK_URL =
   process.env.GITHUB_CALLBACK_URL ||
   "http://localhost:3000/auth/github/callback";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3001";
+
+interface GitHubOAuthTokenResponse {
+  access_token?: string;
+  token_type?: string;
+  scope?: string;
+  error?: string;
+  error_description?: string;
+  error_uri?: string;
+}
 
 if (!GITHUB_CLIENT_ID || !GITHUB_CLIENT_SECRET) {
   throw new Error(
@@ -123,20 +131,30 @@ router.get("/github/callback", async (req: Request, res: Response) => {
     }
 
     console.log("[OAuth] Exchanging code for access token");
-    const tokenResponse = await axios.post(
+    const tokenResponse = await fetch(
       "https://github.com/login/oauth/access_token",
       {
-        client_id: GITHUB_CLIENT_ID,
-        client_secret: GITHUB_CLIENT_SECRET,
-        code: code,
-        redirect_uri: GITHUB_CALLBACK_URL,
-      },
-      {
-        headers: { Accept: "application/json" },
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          client_id: GITHUB_CLIENT_ID,
+          client_secret: GITHUB_CLIENT_SECRET,
+          code: code,
+          redirect_uri: GITHUB_CALLBACK_URL,
+        }),
       }
     );
 
-    const { access_token, error: tokenError } = tokenResponse.data;
+    if (!tokenResponse.ok) {
+      throw new Error(`GitHub API returned ${tokenResponse.status}: ${tokenResponse.statusText}`);
+    }
+
+    const tokenData = await tokenResponse.json() as GitHubOAuthTokenResponse;
+
+    const { access_token, error: tokenError } = tokenData;
     if (tokenError || !access_token) {
       throw new Error(
         `GitHub OAuth error: ${tokenError || "No access token received"}`
