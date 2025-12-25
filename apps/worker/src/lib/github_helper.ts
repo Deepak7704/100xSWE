@@ -136,7 +136,8 @@ export class GitHubHelper {
     branchName: string,
     title: string,
     body: string,
-    baseBranch?: string
+    baseBranch?: string,
+    isFork?: boolean
   ): Promise<{ number: number; url: string }> {
     console.log("Creating pull request...");
 
@@ -144,13 +145,25 @@ export class GitHubHelper {
     const base =
       baseBranch || (await this.getDefaultBranch(originalOwner, originalRepo));
 
+    // Use correct head format based on fork status
+    // For cross-repo PRs from forks: "forkOwner:branchName"
+    // For same-repo PRs: "branchName"
+    const head =
+      isFork && forkOwner !== originalOwner
+        ? `${forkOwner}:${branchName}`
+        : branchName;
+
+    console.log(
+      `Creating PR with head: ${head} (${isFork ? "cross-repo" : "same-repo"})`
+    );
+
     // GitHub Apps create PRs within same repo, not from forks
     const { data: pr } = await this.octokit.rest.pulls.create({
       owner: originalOwner,
       repo: originalRepo,
       title: title,
       body: body,
-      head: branchName,
+      head: head,
       base: base,
     });
 

@@ -12,6 +12,7 @@ import chatRoute from "../routes/chat";
 import { getInstallationForRepo } from "../routes/installation";
 import { getInstallationToken } from "../lib/github_app";
 import { authenticateUser } from "../middleware/auth.middleware";
+import { Octokit } from "@octokit/rest";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -43,6 +44,76 @@ function sanitizeError(error: any): string {
 
 const chatQueue = createQueue(QUEUE_NAMES.WORKER_JOB);
 const indexingQueue = createQueue(QUEUE_NAMES.INDEXING);
+
+/**
+ * Detect if a repository is a fork and get parent repository information
+ */
+async function getForkInfo(repoUrl: string, token: string) {
+  const repoId = repoUrl
+    .replace(/^https?:\/\/(www\.)?github\.com\//, "")
+    .replace(".git", "")
+    .replace(/\/$/, "")
+    .trim();
+
+  const parts = repoId.split("/");
+  const owner = parts[0];
+  const repo = parts[1];
+
+  // Validate that we have both owner and repo
+  if (!owner || !repo) {
+    console.warn(
+      `[Fork Detection] Invalid repository format: ${repoId}, assuming not a fork`
+    );
+    return {
+      isFork: false,
+      forkUrl: repoUrl,
+      forkId: repoId,
+      parentUrl: repoUrl,
+      parentId: repoId,
+    };
+  }
+
+  try {
+    const octokit = new Octokit({ auth: token });
+    const { data } = await octokit.rest.repos.get({ owner, repo });
+
+    if (data.fork && data.parent) {
+      // Repository IS a fork
+      console.log(
+        `[Fork Detection] Repository is a fork: ${repoId} → parent: ${data.parent.full_name}`
+      );
+      return {
+        isFork: true,
+        forkUrl: repoUrl,
+        forkId: repoId,
+        parentUrl: data.parent.clone_url,
+        parentId: data.parent.full_name,
+      };
+    }
+
+    // Repository is NOT a fork
+    console.log(`[Fork Detection] Repository is NOT a fork: ${repoId}`);
+    return {
+      isFork: false,
+      forkUrl: repoUrl,
+      forkId: repoId,
+      parentUrl: repoUrl,
+      parentId: repoId,
+    };
+  } catch (error: any) {
+    console.warn(
+      `[Fork Detection] Failed to check fork status for ${repoId}, assuming not a fork:`,
+      error.message
+    );
+    return {
+      isFork: false,
+      forkUrl: repoUrl,
+      forkId: repoId,
+      parentUrl: repoUrl,
+      parentId: repoId,
+    };
+  }
+}
 
 app.use(
   cors({
@@ -160,15 +231,33 @@ app.post("/api/chat", authenticateUser, strictLimiter, async (req, res) => {
         `[Chat API] Indexing job ${indexingJob.id} queued for ${repoId} by user ${username}`
       );
 
+      // Detect fork for code generation job
+      // Use user's OAuth token from session (has full user permissions)
+      const userOAuthToken = req.user!.githubAccessToken;
+
+      if (!userOAuthToken) {
+        return res.status(401).json({
+          error: "GitHub authentication required. Please log in with GitHub to continue.",
+          requiresLogin: true,
+        });
+      }
+
+      console.log(`[Chat API] Using user OAuth token for ${username}`);
+      const githubToken = userOAuthToken || installationToken || process.env.GITHUB_ACCESS_TOKEN || "";
+      const forkInfo = await getForkInfo(repoUrl, githubToken);
+
       const codeGenJobId = randomUUID();
       const codeGenJob = await chatQueue.add(
         "process",
         {
-          repoUrl,
+          repoUrl: forkInfo.forkUrl,
+          parentRepoUrl: forkInfo.parentUrl,
           task,
-          repoId,
+          repoId: forkInfo.forkId,
+          parentRepoId: forkInfo.parentId,
+          isFork: forkInfo.isFork,
           indexingJobId: indexingJob.id,
-          installationToken,
+          githubToken: userOAuthToken,
           userId,
           username,
         },
@@ -194,14 +283,40 @@ app.post("/api/chat", authenticateUser, strictLimiter, async (req, res) => {
       `[Chat API] Repository ${repoId} already indexed. Proceeding with code generation for user ${username}...`
     );
 
+    // Detect if repository is a fork
+    // Use user's OAuth token from session (has full user permissions)
+    const userOAuthToken = req.user!.githubAccessToken;
+
+    if (!userOAuthToken) {
+      return res.status(401).json({
+        error: "GitHub authentication required. Please log in with GitHub to continue.",
+        requiresLogin: true,
+      });
+    }
+
+    console.log(`[Chat API] Using user OAuth token for ${username}`);
+    const githubToken = userOAuthToken || installationToken || process.env.GITHUB_ACCESS_TOKEN || "";
+    const forkInfo = await getForkInfo(repoUrl, githubToken);
+
+    if (forkInfo.isFork) {
+      console.log(
+        `[Chat API] Fork workflow: ${forkInfo.forkId} → ${forkInfo.parentId}`
+      );
+    } else {
+      console.log(`[Chat API] Same-repo workflow: ${forkInfo.forkId}`);
+    }
+
     const jobId = randomUUID();
     const job = await chatQueue.add(
       "process",
       {
-        repoUrl,
+        repoUrl: forkInfo.forkUrl,
+        parentRepoUrl: forkInfo.parentUrl,
         task,
-        repoId,
-        installationToken,
+        repoId: forkInfo.forkId,
+        parentRepoId: forkInfo.parentId,
+        isFork: forkInfo.isFork,
+        githubToken: userOAuthToken,
         userId,
         username,
       },

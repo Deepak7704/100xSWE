@@ -131,6 +131,13 @@ export class IndexingProcessor {
             return null;
           }
 
+          // Check if vector is all zeros (Pinecone rejects zero vectors)
+          const sum = embedding.reduce((acc: number, val: number) => acc + Math.abs(val), 0);
+          if (sum === 0) {
+            console.warn(`Skipping ${chunk.id}: zero vector (file has minimal content)`);
+            return null;
+          }
+
           const metadata: Record<string, any> = {
             repoId,
             repoUrl,
@@ -162,7 +169,14 @@ export class IndexingProcessor {
         throw new Error("No valid vectors");
       }
 
-      console.log(`Storing ${vectors.length} vectors\n`);
+      const totalChunks = chunks.length;
+      const validVectors = vectors.length;
+      const filteredCount = totalChunks - validVectors;
+
+      if (filteredCount > 0) {
+        console.log(`Filtered ${filteredCount} zero/empty vectors`);
+      }
+      console.log(`Storing ${validVectors} valid vectors\n`);
       await vectorDB.upsertVectors(vectors);
       await job.updateProgress(90);
 
@@ -326,6 +340,13 @@ export class IndexingProcessor {
             return null;
           }
 
+          // Check if vector is all zeros (Pinecone rejects zero vectors)
+          const sum = embedding.reduce((acc: number, val: number) => acc + Math.abs(val), 0);
+          if (sum === 0) {
+            console.warn(`Skipping ${chunk.id}: zero vector (file has minimal content)`);
+            return null;
+          }
+
           const metadata: Record<string, any> = {
             repoId,
             repoUrl,
@@ -353,7 +374,14 @@ export class IndexingProcessor {
           (vector): vector is NonNullable<typeof vector> => vector !== null
         );
 
-      console.log(`Upserting ${vectors.length} vectors\n`);
+      const totalChunks = chunks.length;
+      const validVectors = vectors.length;
+      const filteredCount = totalChunks - validVectors;
+
+      if (filteredCount > 0) {
+        console.log(`Filtered ${filteredCount} zero/empty vectors`);
+      }
+      console.log(`Upserting ${validVectors} valid vectors\n`);
       await vectorDB.upsertVectors(vectors);
       await job.updateProgress(90);
 

@@ -45,7 +45,11 @@ export class GitService {
     this.gitInstalled = true;
   }
 
-  async cloneRepository(sandbox: Sandbox, repoUrl: string): Promise<string> {
+  async cloneRepository(
+    sandbox: Sandbox,
+    repoUrl: string,
+    githubToken?: string
+  ): Promise<string> {
     await this.ensureGitInstalled(sandbox);
 
     const urlPattern = /^https:\/\/github\.com\/[\w\-]+\/[\w\-\.]+(?:\.git)?$/;
@@ -60,7 +64,17 @@ export class GitService {
     const targetDir = "/home/user/project";
     await sandbox.commands.run(`rm -rf ${targetDir}`);
 
-    const escapedRepoUrl = repoUrl.replace(/'/g, "'\\''");
+    // Add authentication token to URL if provided
+    let cloneUrl = repoUrl;
+    if (githubToken) {
+      cloneUrl = repoUrl.replace(
+        "https://github.com",
+        `https://x-access-token:${githubToken}@github.com`
+      );
+      console.log("Using authenticated clone (OAuth token provided)");
+    }
+
+    const escapedRepoUrl = cloneUrl.replace(/'/g, "'\\''");
     const escapedTargetDir = targetDir.replace(/'/g, "'\\''");
 
     const cloneCmd = `

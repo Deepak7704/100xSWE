@@ -37,24 +37,36 @@ export class JobProcessor {
     fileOperations: any[];
     explanation: string;
   }> {
-    const { repoUrl, task, repoId, indexingJobId, installationToken } =
-      job.data;
+    const {
+      repoUrl,
+      parentRepoUrl,
+      task,
+      repoId,
+      parentRepoId,
+      isFork,
+      indexingJobId,
+      githubToken,
+    } = job.data;
     const projectId = `job-${job.id}`;
 
     console.log(`Processing job ${job.id}: ${task}`);
     console.log(`Repository ID: ${repoId}`);
+    console.log(
+      `Workflow: ${isFork ? "FORK (cross-repo PR)" : "SAME-REPO (same-repo PR)"}`
+    );
+    if (isFork) {
+      console.log(`  Fork: ${repoId}`);
+      console.log(`  Parent: ${parentRepoId}`);
+    }
 
-    const githubToken = installationToken || process.env.GITHUB_ACCESS_TOKEN;
     if (!githubToken) {
       throw new Error(
-        "No GitHub token available (neither installationToken nor GITHUB_ACCESS_TOKEN)"
+        "No GitHub token available. Please ensure you're logged in with GitHub."
       );
     }
 
     const githubService = new GitHubService(githubToken);
-    console.log(
-      `Using ${installationToken ? "installation" : "personal"} token for GitHub operations`
-    );
+    console.log(`Using user OAuth token for GitHub operations`);
 
     try {
       if (indexingJobId) {
@@ -68,7 +80,11 @@ export class JobProcessor {
 
       await job.updateProgress(20);
       console.log("Step 2: Cloning repository...");
-      const repoPath = await this.gitService.cloneRepository(sandbox, repoUrl);
+      const repoPath = await this.gitService.cloneRepository(
+        sandbox,
+        repoUrl,
+        githubToken
+      );
 
       console.log("Step 3.5: Detecting package manager...");
       const packageManager = await this.sandboxService.detectPackageManager(
@@ -211,11 +227,11 @@ export class JobProcessor {
       const fileContents =
         existingFiles.length > 0
           ? await this.sandboxService.getFileContents(
-              sandbox,
-              existingFiles,
-              Infinity,
-              repoPath
-            )
+            sandbox,
+            existingFiles,
+            Infinity,
+            repoPath
+          )
           : new Map<string, string>();
       const allFiles = await this.sandboxService.getFileTree(sandbox, repoPath);
 
@@ -226,12 +242,13 @@ export class JobProcessor {
       const graph = createCodeValidationGraph();
 
       const workflowResult = await graph.invoke({
-        repoUrl,
-        repoId,
+        repoUrl: parentRepoUrl || repoUrl,
+        repoId: parentRepoId || repoId,
         task,
         forkUrl: repoUrl,
         forkOwner: repoId.split("/")[0],
         branchName,
+        isFork: isFork || false,
         packageManager,
         relevantFiles,
         filesToModify,

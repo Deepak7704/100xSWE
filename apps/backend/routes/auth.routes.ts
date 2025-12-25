@@ -89,7 +89,7 @@ router.get("/github/login", async (req: Request, res: Response) => {
     const params = new URLSearchParams({
       client_id: GITHUB_CLIENT_ID!,
       redirect_uri: GITHUB_CALLBACK_URL,
-      scope: "user:email read:user",
+      scope: "user:email read:user repo",
       state: state,
       allow_signup: "true",
     });

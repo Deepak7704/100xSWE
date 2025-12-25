@@ -33,7 +33,8 @@ export class GitHubService {
     forkOwner: string,
     branchName: string,
     task: string,
-    explanation: string
+    explanation: string,
+    isFork?: boolean
   ): Promise<{ number: number; url: string }> {
     const { owner: originalOwner, repo: originalRepo } =
       this.githubHelper.parseGitHubUrl(repoUrl);
@@ -44,7 +45,9 @@ export class GitHubService {
       forkOwner,
       branchName,
       `AI: ${task}`,
-      explanation
+      explanation,
+      undefined,
+      isFork
     );
   }
 }

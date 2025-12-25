@@ -16,6 +16,10 @@ export const CodeValidationState = Annotation.Root({
   forkOwner: Annotation<string>(),
   branchName: Annotation<string>(),
   packageManager: Annotation<string>(),
+  isFork: Annotation<boolean>({
+    reducer: (_, update) => update,
+    default: () => false,
+  }),
 
   relevantFiles: Annotation<string[]>(),
   filesToModify: Annotation<string[]>(),
@@ -277,7 +281,8 @@ async function createPRNode(
       state.forkOwner,
       state.branchName,
       state.task,
-      state.generatedCode?.explanation || ""
+      state.generatedCode?.explanation || "",
+      state.isFork
     );
 
     console.log(`\nPull Request Created!`);
