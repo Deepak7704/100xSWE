@@ -136,7 +136,7 @@ router.get("/github/callback", async (req: Request, res: Response) => {
       {
         method: "POST",
         headers: {
-          "Accept": "application/json",
+          Accept: "application/json",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -149,10 +149,12 @@ router.get("/github/callback", async (req: Request, res: Response) => {
     );
 
     if (!tokenResponse.ok) {
-      throw new Error(`GitHub API returned ${tokenResponse.status}: ${tokenResponse.statusText}`);
+      throw new Error(
+        `GitHub API returned ${tokenResponse.status}: ${tokenResponse.statusText}`
+      );
     }
 
-    const tokenData = await tokenResponse.json() as GitHubOAuthTokenResponse;
+    const tokenData = (await tokenResponse.json()) as GitHubOAuthTokenResponse;
 
     const { access_token, error: tokenError } = tokenData;
     if (tokenError || !access_token) {

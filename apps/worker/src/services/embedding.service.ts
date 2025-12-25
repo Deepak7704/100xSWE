@@ -23,15 +23,13 @@ export class EmbeddingService {
 
   // NEW: L2 Normalization function (required for dimensions < 3072)
   private normalizeL2(vector: number[]): number[] {
-    const norm = Math.sqrt(
-      vector.reduce((sum, val) => sum + val * val, 0)
-    );
-    
+    const norm = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
+
     if (norm === 0) {
       console.warn("Zero norm vector detected, returning original");
       return vector;
     }
-    
+
     return vector.map((val) => val / norm);
   }
 
@@ -72,7 +70,7 @@ export class EmbeddingService {
       taskType: "CODE_RETRIEVAL_QUERY", // Optimized for code queries
       outputDimensionality: this.EMBEDDING_DIMENSION,
     });
-    
+
     // Apply L2 normalization
     return this.normalizeL2(result.embedding.values);
   }
@@ -81,13 +79,13 @@ export class EmbeddingService {
   private async embedChunk(chunk: CodeChunk): Promise<number[]> {
     try {
       const text = this.formatChunkForEmbedding(chunk);
-      
+
       const result = await this.model.embedContent({
         content: { parts: [{ text }] },
         taskType: "RETRIEVAL_DOCUMENT", // For indexing code chunks
         outputDimensionality: this.EMBEDDING_DIMENSION,
       });
-      
+
       // Apply L2 normalization
       return this.normalizeL2(result.embedding.values);
     } catch (error) {

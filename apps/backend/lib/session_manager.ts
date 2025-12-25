@@ -62,13 +62,13 @@ export async function getSession(sessionId: string): Promise<Session | null> {
   try {
     // Add 3-second timeout to prevent hanging
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Redis get timeout after 3s')), 3000)
+      setTimeout(() => reject(new Error("Redis get timeout after 3s")), 3000)
     );
 
-    const sessionJson = await Promise.race([
+    const sessionJson = (await Promise.race([
       connection.get(redisKey),
-      timeoutPromise
-    ]) as string | null;
+      timeoutPromise,
+    ])) as string | null;
 
     if (!sessionJson) {
       console.log(`[Session] Session ${sessionId} not found`);
@@ -78,8 +78,10 @@ export async function getSession(sessionId: string): Promise<Session | null> {
     const session = JSON.parse(sessionJson) as Session;
     return session;
   } catch (error) {
-    if (error instanceof Error && error.message.includes('timeout')) {
-      console.error(`[Session] TIMEOUT retrieving session ${sessionId} - Redis connection slow`);
+    if (error instanceof Error && error.message.includes("timeout")) {
+      console.error(
+        `[Session] TIMEOUT retrieving session ${sessionId} - Redis connection slow`
+      );
     } else {
       console.error(`[Session] Error retrieving session ${sessionId}`, error);
     }

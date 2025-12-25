@@ -49,7 +49,9 @@ export function useJobStatus(jobId: string | null, token: string | null) {
         }
 
         const data = await response.json();
-        console.log(`[useJobStatus] Job state: ${data.state}, progress: ${data.progress}`);
+        console.log(
+          `[useJobStatus] Job state: ${data.state}, progress: ${data.progress}`
+        );
 
         setStatus(data);
         setError(null); // Clear any previous errors
@@ -60,7 +62,8 @@ export function useJobStatus(jobId: string | null, token: string | null) {
           clearInterval(intervalId);
         }
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "Unknown error";
+        const errorMessage =
+          err instanceof Error ? err.message : "Unknown error";
         console.error(`[useJobStatus] Error fetching status:`, err);
         setError(errorMessage);
         setIsLoading(false);

@@ -132,9 +132,14 @@ export class IndexingProcessor {
           }
 
           // Check if vector is all zeros (Pinecone rejects zero vectors)
-          const sum = embedding.reduce((acc: number, val: number) => acc + Math.abs(val), 0);
+          const sum = embedding.reduce(
+            (acc: number, val: number) => acc + Math.abs(val),
+            0
+          );
           if (sum === 0) {
-            console.warn(`Skipping ${chunk.id}: zero vector (file has minimal content)`);
+            console.warn(
+              `Skipping ${chunk.id}: zero vector (file has minimal content)`
+            );
             return null;
           }
 
@@ -341,9 +346,14 @@ export class IndexingProcessor {
           }
 
           // Check if vector is all zeros (Pinecone rejects zero vectors)
-          const sum = embedding.reduce((acc: number, val: number) => acc + Math.abs(val), 0);
+          const sum = embedding.reduce(
+            (acc: number, val: number) => acc + Math.abs(val),
+            0
+          );
           if (sum === 0) {
-            console.warn(`Skipping ${chunk.id}: zero vector (file has minimal content)`);
+            console.warn(
+              `Skipping ${chunk.id}: zero vector (file has minimal content)`
+            );
             return null;
           }
 

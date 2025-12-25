@@ -227,11 +227,11 @@ export class JobProcessor {
       const fileContents =
         existingFiles.length > 0
           ? await this.sandboxService.getFileContents(
-            sandbox,
-            existingFiles,
-            Infinity,
-            repoPath
-          )
+              sandbox,
+              existingFiles,
+              Infinity,
+              repoPath
+            )
           : new Map<string, string>();
       const allFiles = await this.sandboxService.getFileTree(sandbox, repoPath);
 
