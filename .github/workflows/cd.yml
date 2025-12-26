@@ -33,6 +33,7 @@ jobs:
                 host: ${{ secrets.SSH_HOST }}
                 username: ${{ secrets.SSH_USERNAME }}
                 key: ${{ secrets.SSH_KEY }}
+                key_is_base64: true
                 script: |
                   if ! command -v docker &> /dev/null; then
                     echo "Installing Docker..."
@@ -52,6 +53,7 @@ jobs:
                 host: ${{ secrets.SSH_HOST }}
                 username: ${{ secrets.SSH_USERNAME }}
                 key: ${{ secrets.SSH_KEY }}
+                key_is_base64: true
                 script: |
                   set -e
                   echo "Navigating to project directory..."
@@ -116,11 +118,9 @@ jobs:
                       image: deepakveluvolu/100xswe:latest
                       env_file: .env
                       environment:
-                        - NODE_ENV=production
                         - REDIS_HOST=redis
                         - REDIS_PORT=6379
                         - PORT=8000
-                        - FRONTEND_URL=${FRONTEND_URL}
                       ports:
                         - "8000:8000"
                       restart: unless-stopped
@@ -141,7 +141,6 @@ jobs:
                       image: deepakveluvolu/100xswe:latest
                       env_file: .env
                       environment:
-                        - NODE_ENV=production
                         - REDIS_HOST=redis
                         - REDIS_PORT=6379
                       restart: unless-stopped
