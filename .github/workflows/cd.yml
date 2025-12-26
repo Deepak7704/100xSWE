@@ -85,9 +85,6 @@ jobs:
                   REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
                   REDIS_PORT=${{ secrets.REDIS_PORT }}
                   SESSION_EXPIRE_DAYS=${{ secrets.SESSION_EXPIRE_DAYS }}
-                  SSH_HOST=${{ secrets.SSH_HOST }}
-                  SSH_KEY=${{ secrets.SSH_KEY }}
-                  SSH_USERNAME=${{ secrets.SSH_USERNAME }}
                   EOF
 
                   echo "Writing docker-compose.yml file"
