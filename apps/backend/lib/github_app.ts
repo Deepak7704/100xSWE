@@ -1,11 +1,11 @@
 import { App } from "@octokit/app";
 
-const GITHUB_APP_ID = process.env.GITHUB_APP_ID;
-const GITHUB_APP_PRIVATE_KEY = process.env.GITHUB_APP_PRIVATE_KEY?.replace(
+const GITHUB_APP_ID = process.env.MY_GITHUB_APP_ID;
+const GITHUB_APP_PRIVATE_KEY = process.env.MY_GITHUB_APP_PRIVATE_KEY?.replace(
   /\\n/g,
   "\n"
 );
-const GITHUB_WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET;
+const GITHUB_WEBHOOK_SECRET = process.env.MY_GITHUB_WEBHOOK_SECRET;
 
 if (!GITHUB_APP_ID || !GITHUB_APP_PRIVATE_KEY || !GITHUB_WEBHOOK_SECRET) {
   throw new Error("Missing GitHub App credentials");

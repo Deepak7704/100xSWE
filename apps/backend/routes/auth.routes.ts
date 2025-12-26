@@ -14,10 +14,10 @@ import { connection as redis } from "@openswe/shared/queues";
 
 const router = Router();
 
-const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
-const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
+const GITHUB_CLIENT_ID = process.env.MY_GITHUB_CLIENT_ID;
+const GITHUB_CLIENT_SECRET = process.env.MY_GITHUB_CLIENT_SECRET;
 const GITHUB_CALLBACK_URL =
-  process.env.GITHUB_CALLBACK_URL ||
+  process.env.MY_GITHUB_CALLBACK_URL ||
   "http://localhost:3000/auth/github/callback";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3001";
 
@@ -32,7 +32,7 @@ interface GitHubOAuthTokenResponse {
 
 if (!GITHUB_CLIENT_ID || !GITHUB_CLIENT_SECRET) {
   throw new Error(
-    "GitHub OAuth credentials (GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET) must be set!"
+    "GitHub OAuth credentials (MY_GITHUB_CLIENT_ID, MY_GITHUB_CLIENT_SECRET) must be set!"
   );
 }
 

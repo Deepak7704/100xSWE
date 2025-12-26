@@ -190,14 +190,14 @@ app.post("/api/chat", authenticateUser, strictLimiter, async (req, res) => {
         );
       } else {
         console.log(
-          `[Chat API] No GitHub App installation found for ${repoId}, will use GITHUB_ACCESS_TOKEN fallback`
+          `[Chat API] No GitHub App installation found for ${repoId}, will use MY_GITHUB_ACCESS_TOKEN fallback`
         );
       }
     } catch (error: any) {
       console.warn(
         `[Chat API] Failed to get installation token: ${error.message}`
       );
-      console.log(`[Chat API] Will use GITHUB_ACCESS_TOKEN fallback`);
+      console.log(`[Chat API] Will use MY_GITHUB_ACCESS_TOKEN fallback`);
     }
 
     const bm25Key = `bm25:index:${repoId}`;
@@ -236,7 +236,7 @@ app.post("/api/chat", authenticateUser, strictLimiter, async (req, res) => {
 
       // Step 1: Get fork information using preliminary token
       const preliminaryToken =
-        installationToken || process.env.GITHUB_ACCESS_TOKEN || "";
+        installationToken || process.env.MY_GITHUB_ACCESS_TOKEN || "";
       const forkInfo = await getForkInfo(repoUrl, preliminaryToken);
 
       // Step 2: Smart token selection based on repository type
@@ -324,7 +324,7 @@ app.post("/api/chat", authenticateUser, strictLimiter, async (req, res) => {
 
     // Step 1: Get fork information using preliminary token
     const preliminaryToken =
-      installationToken || process.env.GITHUB_ACCESS_TOKEN || "";
+      installationToken || process.env.MY_GITHUB_ACCESS_TOKEN || "";
     const forkInfo = await getForkInfo(repoUrl, preliminaryToken);
 
     // Step 2: Smart token selection based on repository type

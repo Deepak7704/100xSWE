@@ -67,7 +67,12 @@ export function useJobStatus(jobId: string | null, token: string | null) {
         console.error(`[useJobStatus] Error fetching status:`, err);
         setError(errorMessage);
         setIsLoading(false);
-        // Don't clear interval on error - keep retrying
+        if (errorMessage.includes("404")) {
+          console.log(
+            `[useJobStatus] Job not found (404), stopping polling. Job may have been removed from queue.`
+          );
+          clearInterval(intervalId);
+        }
       }
     };
 
