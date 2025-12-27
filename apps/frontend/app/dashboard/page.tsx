@@ -35,7 +35,7 @@ export default function Dashboard() {
     try {
       setLoadingRepos(true);
       const backendUrl =
-        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+        process.env.NEXT_PUBLIC_BACKEND_URL || "https://be.100xswe.app";
 
       const response = await fetch(`${backendUrl}/auth/repos`, {
         headers: {
@@ -95,7 +95,7 @@ export default function Dashboard() {
 
     try {
       const backendUrl =
-        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+        process.env.NEXT_PUBLIC_BACKEND_URL || "https://be.100xswe.app";
       const response = await fetch(`${backendUrl}/api/chat`, {
         method: "POST",
         headers: {
@@ -245,9 +245,8 @@ export default function Dashboard() {
                     key={repo.id}
                     type="button"
                     onClick={() => handleRepoSelect(repo)}
-                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                      index === 0 ? "rounded-t-2xl" : ""
-                    } ${index === filteredRepos.length - 1 ? "rounded-b-2xl" : ""}`}
+                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${index === 0 ? "rounded-t-2xl" : ""
+                      } ${index === filteredRepos.length - 1 ? "rounded-b-2xl" : ""}`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">

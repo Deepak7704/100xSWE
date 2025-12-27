@@ -66,6 +66,7 @@ jobs:
                   DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME }}
                   E2B_API_KEY=${{ secrets.E2B_API_KEY }}
                   E2B_TEMPLATE_ID=${{ secrets.E2B_TEMPLATE_ID }}
+                  FRONTEND_URL=${{ secrets.FRONTEND_URL }}
                   GOOGLE_GENERATIVE_AI_API_KEY=${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
                   INCREMENTAL_THRESHOLD=${{ secrets.INCREMENTAL_THRESHOLD }}
                   JWT_SECRET=${{ secrets.JWT_SECRET }}

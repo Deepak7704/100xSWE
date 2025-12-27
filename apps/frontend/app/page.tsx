@@ -4,6 +4,7 @@ import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import FeatureCards from "@/components/FeatureCards";
 import CodeDemo from "@/components/CodeDemo";
+import References from "@/components/References";
 import Footer from "@/components/Footer";
 
 export default function Home() {
@@ -13,6 +14,7 @@ export default function Home() {
       <Hero />
       <FeatureCards />
       <CodeDemo />
+      <References />
       <Footer />
     </div>
   );

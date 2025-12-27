@@ -37,7 +37,7 @@ const GitDiff = ({ jobId, token }: GitDiffProps) => {
     }
 
     const backendUrl =
-      process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+      process.env.NEXT_PUBLIC_BACKEND_URL || "https://be.100xswe.app";
     let intervalId: NodeJS.Timeout | null = null;
 
     const fetchFileDiffs = async () => {
