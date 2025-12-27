@@ -186,7 +186,8 @@ const E2BSandbox = ({ jobId, token }: SandboxProps) => {
             {logs.map((log, idx) => (
               <div
                 key={idx}
-                className={`flex items-start gap-2 ${log.type === "error"
+                className={`flex items-start gap-2 ${
+                  log.type === "error"
                     ? "text-red-600"
                     : log.type === "success"
                       ? "text-green-600 font-semibold"
@@ -195,7 +196,7 @@ const E2BSandbox = ({ jobId, token }: SandboxProps) => {
                         : log.type === "info"
                           ? "text-purple-600"
                           : "text-foreground"
-                  }`}
+                }`}
               >
                 <span className="text-muted-foreground text-xs min-w-[70px]">
                   {log.timestamp.toLocaleTimeString()}
