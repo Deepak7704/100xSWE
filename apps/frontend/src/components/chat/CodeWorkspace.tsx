@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import E2BSandbox from "./Sandbox";
 import GitDiff from "./GitDiff";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, ArrowLeft } from "lucide-react";
 import { Job } from "@/types";
 
 interface CodeWorkspaceProps {
@@ -24,6 +25,7 @@ const CodeWorkspace = ({
   token,
 }: CodeWorkspaceProps) => {
   const [activeTab, setActiveTab] = useState("sandbox");
+  const router = useRouter();
 
   return (
     <div className="flex-1 h-full p-4 md:p-8 bg-background flex flex-col overflow-hidden">
@@ -48,6 +50,17 @@ const CodeWorkspace = ({
               >
                 <ExternalLink className="w-4 h-4 mr-2" />
                 View Pull Request
+              </Button>
+            )}
+            {isCompleted && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-full"
+                onClick={() => router.push("/dashboard")}
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Dashboard
               </Button>
             )}
           </div>
