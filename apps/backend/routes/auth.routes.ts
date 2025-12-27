@@ -19,7 +19,7 @@ const GITHUB_CLIENT_SECRET = process.env.MY_GITHUB_CLIENT_SECRET;
 const GITHUB_CALLBACK_URL =
   process.env.MY_GITHUB_CALLBACK_URL ||
   "https://be.100xswe.app/auth/github/callback";
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
+const FRONTEND_URL = process.env.FRONTEND_URL || "https://100xswe.app";
 
 interface GitHubOAuthTokenResponse {
   access_token?: string;
