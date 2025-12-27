@@ -61,7 +61,7 @@ const ProcessVisualization = () => {
           preserveAspectRatio="xMidYMid meet"
         >
           <defs>
-            <filter id="glow">
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
               <feGaussianBlur stdDeviation="0.5" result="coloredBlur" />
               <feMerge>
                 <feMergeNode in="coloredBlur" />

@@ -9,27 +9,27 @@ import ProcessVisualization from "./ProcessVisualization";
 const features = [
   {
     icon: Search,
-    title: "Intelligent Search",
+    title: "Hybrid Search",
     description:
-      "Advanced search technology finds exactly the right files in your codebase. Let AI pinpoint what needs to change.",
+      "BM25 keyword search + vector embeddings combined with RRF ranking. Finds exactly the right files, every time.",
   },
   {
     icon: Code2,
     title: "Deep Code Understanding",
     description:
-      "Analyzes your code structure to understand how different parts connect and depend on each other.",
+      "AST parsing builds code graphs to understand imports, dependencies, and function relationships across your codebase.",
   },
   {
     icon: Workflow,
-    title: "Automated Workflows",
+    title: "Incremental Indexing",
     description:
-      "Smart orchestration handles the entire process from request to working code with built-in validation.",
+      "Only changed files are re-indexed. Embeddings stay fresh without reprocessing your entire repository.",
   },
   {
     icon: GitBranch,
-    title: "Seamless PR Creation",
+    title: "Validated PR Creation",
     description:
-      "Pull requests are automatically created and ready for review after validation in isolated environments.",
+      "Every change is tested in an isolated sandbox before a production-ready pull request is created.",
   },
 ];
 

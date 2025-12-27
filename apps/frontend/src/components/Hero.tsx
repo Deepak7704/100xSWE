@@ -182,8 +182,10 @@ const Hero = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 1.2 }}
           >
-            AI-powered code generation that understands your codebase and ships
-            production-ready pull requests automatically.
+            An AI software engineer that reads your entire repository,
+            understands file dependencies, writes clean code, validates changes
+            in isolated environments, and creates pull requests ready for
+            review.
           </motion.p>
 
           {/* CTA Button */}

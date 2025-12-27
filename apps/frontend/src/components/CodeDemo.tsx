@@ -14,13 +14,13 @@ const CodeDemo = () => {
             {/* Left side - Content (Sticky) */}
             <div className="flex-1 space-y-8 lg:sticky lg:top-32 lg:self-start">
               <h2 className="font-serif text-3xl sm:text-5xl md:text-6xl lg:text-7xl leading-tight text-foreground">
-                Setup in Minutes, Ship in Seconds
+                Describe. Generate. Ship.
               </h2>
               <p className="font-sans text-base sm:text-lg lg:text-xl leading-relaxed text-foreground">
-                Connect your GitHub repository and describe what you need. Our
-                AI understands your codebase, finds the right files to modify,
-                generates production-ready code, and creates pull requests—all
-                automatically validated before reaching your repo.
+                Connect your GitHub repository or a forked open source project
+                and describe what you need. Our AI understands the codebase,
+                finds the right files, generates production-ready code, and
+                creates pull requests—all validated in sandboxed environments.
               </p>
               <div className="flex flex-wrap gap-4">
                 <Button variant="cta" size="lg" className="rounded-full">
