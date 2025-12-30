@@ -78,10 +78,10 @@ const Navbar = () => {
           </motion.div>
           <motion.div variants={itemVariants}>
             <a
-              href="#about"
+              href="/documentation"
               className="hover:text-muted-foreground transition-colors"
             >
-              About
+              Documentation
             </a>
           </motion.div>
           <motion.div variants={itemVariants}>

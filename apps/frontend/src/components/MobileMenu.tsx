@@ -29,11 +29,11 @@ const MobileMenu = () => {
               Home
             </Link>
             <a
-              href="#about"
+              href="/documentation"
               className="font-sans font-medium text-base hover:text-muted-foreground transition-colors"
               onClick={() => setIsOpen(false)}
             >
-              About
+              Documentation
             </a>
             <Link
               href="/dashboard"
@@ -46,6 +46,7 @@ const MobileMenu = () => {
               variant="cta"
               size="default"
               className="rounded-full w-full mt-2"
+              onClick={() => window.open("https://github.com/signup", "_blank")}
             >
               Sign Up
             </Button>

@@ -4,18 +4,21 @@ import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { FileText, BookOpen, Boxes, ExternalLink, Github } from "lucide-react";
 import Image from "next/image";
+import architecture from '../assets/Architecture.png'
 
 interface ReferenceItem {
   title: string;
   url: string;
 }
 
+import type { StaticImageData } from "next/image";
+
 interface Reference {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
   description: string;
   items: ReferenceItem[];
-  image?: string;
+  image?: string | StaticImageData;
 }
 
 const references: Reference[] = [
@@ -64,7 +67,7 @@ const references: Reference[] = [
         url: "https://github.com/Deepak7704/100xSWE",
       },
     ],
-    image: "/architecture.png",
+    image: architecture,
   },
 ];
 
