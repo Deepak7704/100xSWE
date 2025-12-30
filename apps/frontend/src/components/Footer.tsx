@@ -49,7 +49,7 @@ const Footer = () => {
             </p>
             <div className="flex gap-4">
               <motion.a
-                href="https://twitter.com/100xSWE"
+                href="https://x.com/VeluvoluDeepak"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-full border border-foreground flex items-center justify-center hover:bg-foreground hover:text-background transition-colors"
@@ -66,7 +66,7 @@ const Footer = () => {
                 </svg>
               </motion.a>
               <motion.a
-                href="https://github.com/100xSWE"
+                href="https://github.com/Deepak7704/100xSWE/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-full border border-foreground flex items-center justify-center hover:bg-foreground hover:text-background transition-colors"
