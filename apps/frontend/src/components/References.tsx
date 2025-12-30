@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { FileText, BookOpen, Boxes, ExternalLink, Github } from "lucide-react";
 import Image from "next/image";
-import architecture from '../assets/Architecture.png'
+import architecture from "../assets/Architecture.png";
 
 interface ReferenceItem {
   title: string;
