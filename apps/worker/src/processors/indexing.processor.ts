@@ -26,8 +26,8 @@ interface BaseJob {
 
 interface FullIndexJob extends BaseJob {
   indexType: "full";
-  beforeSHA?: string;
-  afterSHA?: string;
+  beforeSHA?: string;// Git commit before (optional) 
+  afterSHA?: string;// Git commit after (optional)
 }
 
 interface IncrementalIndexJob extends BaseJob {
@@ -35,9 +35,9 @@ interface IncrementalIndexJob extends BaseJob {
   beforeSHA: string;
   afterSHA: string;
   changedFiles: {
-    added: string[];
-    modified: string[];
-    removed: string[];
+    added: string[];// New files: ["src/new.ts", "lib/helper.ts"]
+    modified: string[];// Changed files: ["src/auth.ts"]
+    removed: string[];// Deleted files: ["old/deprecated.ts"]
   };
   totalChangedFiles: number;
 }
@@ -45,6 +45,7 @@ interface IncrementalIndexJob extends BaseJob {
 type IndexJob = FullIndexJob | IncrementalIndexJob;
 
 export class IndexingProcessor {
+  //a factory method that creates new worker instances
   static async createWorker() {
     const worker = new Worker(
       "indexing",

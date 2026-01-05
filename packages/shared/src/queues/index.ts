@@ -9,7 +9,7 @@ const connection = new IORedis({
   host: process.env.REDIS_HOST || "localhost",
   port: parseInt(process.env.REDIS_PORT || "6379"),
   password: redisPassword || undefined,
-  maxRetriesPerRequest: null,
+  maxRetriesPerRequest: null, //maxRetriesPerRequest: null. Disabling retries prevents BullMQ from hanging indefinitely during Redis outages, which is important for workers that must fail fast
 });
 
 // Handle connection errors
