@@ -26,8 +26,8 @@ interface BaseJob {
 
 interface FullIndexJob extends BaseJob {
   indexType: "full";
-  beforeSHA?: string;// Git commit before (optional) 
-  afterSHA?: string;// Git commit after (optional)
+  beforeSHA?: string; // Git commit before (optional)
+  afterSHA?: string; // Git commit after (optional)
 }
 
 interface IncrementalIndexJob extends BaseJob {
@@ -35,9 +35,9 @@ interface IncrementalIndexJob extends BaseJob {
   beforeSHA: string;
   afterSHA: string;
   changedFiles: {
-    added: string[];// New files: ["src/new.ts", "lib/helper.ts"]
-    modified: string[];// Changed files: ["src/auth.ts"]
-    removed: string[];// Deleted files: ["old/deprecated.ts"]
+    added: string[]; // New files: ["src/new.ts", "lib/helper.ts"]
+    modified: string[]; // Changed files: ["src/auth.ts"]
+    removed: string[]; // Deleted files: ["old/deprecated.ts"]
   };
   totalChangedFiles: number;
 }
