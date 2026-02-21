@@ -81,7 +81,7 @@ const Hero = () => {
 
   return (
     <>
-      <section className="min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 pt-24 sm:pt-32 pb-16 sm:pb-20 overflow-hidden relative bg-background">
+      <section className="min-h-screen flex flex-col items-center justify-center px-3 sm:px-6 pt-20 sm:pt-32 pb-12 sm:pb-20 overflow-hidden relative bg-background">
         {/* Animated Background - Floating Octopus Logos */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           {floatingLogos.map((logo) => (
@@ -169,7 +169,7 @@ const Hero = () => {
           >
             <h1
               ref={headlineRef}
-              className="font-serif text-3xl sm:text-5xl md:text-7xl lg:text-8xl xl:text-9xl mb-6 sm:mb-8 leading-tight tracking-tight"
+              className="font-serif text-[1.6rem] leading-[1.2] xs:text-3xl sm:text-5xl md:text-7xl lg:text-8xl xl:text-9xl mb-4 sm:mb-8 tracking-tight px-1 sm:px-0"
             >
               From GitHub Issues to Pull Requests in Seconds
             </h1>
@@ -177,7 +177,7 @@ const Hero = () => {
 
           {/* Subtitle */}
           <motion.p
-            className="font-sans text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10"
+            className="font-sans text-sm sm:text-lg md:text-xl text-muted-foreground max-w-[90%] sm:max-w-2xl mx-auto mb-8 sm:mb-10 leading-relaxed px-2 sm:px-0"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 1.2 }}
@@ -201,7 +201,7 @@ const Hero = () => {
             <Button
               variant="cta"
               size="lg"
-              className="rounded-full mb-16 hover:scale-105 transition-transform duration-300 shadow-lg hover:shadow-xl"
+              className="rounded-full mb-10 sm:mb-16 hover:scale-105 transition-transform duration-300 shadow-lg hover:shadow-xl text-sm sm:text-base"
               onClick={handleConnectClick}
             >
               <Github className="w-5 h-5 mr-2" />
@@ -219,36 +219,39 @@ const Hero = () => {
             {/* Glow behind MacBook */}
             <div className="absolute -inset-4 bg-gradient-to-b from-foreground/5 to-transparent rounded-3xl blur-2xl -z-10" />
 
-            {/* MacBook Frame */}
-            <div className="bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl overflow-hidden">
+            {/* MacBook Frame - scales down on small screens */}
+            <div
+              className="bg-gray-900 border border-gray-700 rounded-lg md:rounded-2xl shadow-2xl overflow-hidden"
+              style={{ fontSize: 'clamp(10px, 2.5vw, 16px)' }}
+            >
               {/* Title bar - Dark theme */}
-              <div className="bg-gray-800 border-b border-gray-700 px-4 py-3 flex items-center gap-2">
-                <div className="flex gap-2">
-                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                  <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
+              <div className="bg-gray-800 border-b border-gray-700 px-2 md:px-4 py-1.5 md:py-3 flex items-center gap-1.5">
+                <div className="flex gap-1 md:gap-2">
+                  <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-red-500"></div>
+                  <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-yellow-500"></div>
+                  <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-green-500"></div>
                 </div>
-                <div className="flex-1 text-center font-sans text-sm text-gray-400 font-medium">
+                <div className="flex-1 text-center font-sans text-[10px] md:text-sm text-gray-400 font-medium truncate">
                   GitHub Issue → Pull Request Demo
                 </div>
               </div>
 
               {/* Window content - Dark theme */}
-              <div className="p-6 md:p-8 space-y-6 bg-gray-900">
+              <div className="p-2 md:p-8 space-y-2 md:space-y-6 bg-gray-900">
                 {/* GitHub Issue */}
-                <div className="bg-gray-800 border border-gray-700 rounded-xl p-4 md:p-6">
-                  <div className="flex items-start gap-4">
-                    <div className="w-8 h-8 rounded-full bg-red-600 text-white flex items-center justify-center font-bold flex-shrink-0 text-xl">
+                <div className="bg-gray-800 border border-gray-700 rounded md:rounded-xl p-2 md:p-6">
+                  <div className="flex items-start gap-2 md:gap-4">
+                    <div className="w-5 h-5 md:w-8 md:h-8 rounded-full bg-red-600 text-white flex items-center justify-center font-bold flex-shrink-0 text-[10px] md:text-xl">
                       !
                     </div>
-                    <div className="flex-1 text-left">
-                      <h3 className="font-sans text-base md:text-lg font-bold text-white mb-2">
+                    <div className="flex-1 text-left min-w-0">
+                      <h3 className="font-sans text-xs md:text-lg font-bold text-white mb-0.5 md:mb-2 leading-tight">
                         Critical: Complex Async Error Handling
                       </h3>
-                      <p className="font-sans text-xs md:text-sm text-gray-400 mb-3">
+                      <p className="font-sans text-[9px] md:text-sm text-gray-400 mb-1 md:mb-3">
                         Issue #4287 • Opened 2 hours ago
                       </p>
-                      <p className="font-sans text-sm text-gray-300 leading-relaxed">
+                      <p className="font-sans text-[10px] md:text-sm text-gray-300 leading-relaxed">
                         The application crashes when handling multiple
                         concurrent async operations. Need proper error
                         boundaries and retry logic for production stability.
@@ -259,36 +262,28 @@ const Hero = () => {
 
                 {/* Arrow */}
                 <div className="flex justify-center">
-                  <motion.div
-                    className="text-gray-400 font-sans text-sm font-medium"
-                    animate={{ y: [0, 5, 0] }}
-                    transition={{
-                      duration: 1.5,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                  >
-                    ↓ AI Analysis & Fix ↓
-                  </motion.div>
+                  <div className="text-gray-400 font-sans text-[10px] md:text-sm font-medium">
+                    ↓ AI Analysis &amp; Fix ↓
+                  </div>
                 </div>
 
                 {/* PR Result */}
-                <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
-                  <div className="px-4 md:px-6 py-4 border-b border-gray-700 flex items-center gap-4">
-                    <div className="w-8 h-8 rounded-full bg-green-600 text-white flex items-center justify-center font-bold flex-shrink-0">
+                <div className="bg-gray-800 border border-gray-700 rounded md:rounded-xl overflow-hidden">
+                  <div className="px-2 md:px-6 py-2 md:py-4 border-b border-gray-700 flex items-center gap-2 md:gap-4">
+                    <div className="w-5 h-5 md:w-8 md:h-8 rounded-full bg-green-600 text-white flex items-center justify-center font-bold flex-shrink-0 text-[9px] md:text-base">
                       ✓
                     </div>
-                    <div className="flex-1 text-left">
-                      <h3 className="font-sans font-bold text-white text-sm md:text-base">
+                    <div className="flex-1 text-left min-w-0">
+                      <h3 className="font-sans font-bold text-white text-[11px] md:text-base leading-tight">
                         Fix: Add comprehensive async error handling
                       </h3>
-                      <p className="font-sans text-xs md:text-sm text-gray-400">
+                      <p className="font-sans text-[9px] md:text-sm text-gray-400">
                         Pull Request #4288 • Ready to merge
                       </p>
                     </div>
                   </div>
-                  <div className="p-4 md:p-6 bg-gray-950 overflow-x-auto">
-                    <pre className="font-mono text-xs text-gray-300 space-y-1 text-left">
+                  <div className="p-2 md:p-6 bg-gray-950 overflow-x-auto">
+                    <pre className="font-mono text-[9px] md:text-xs text-gray-300 space-y-0 md:space-y-1 text-left whitespace-pre-wrap break-all md:whitespace-pre md:break-normal">
                       <code className="block">
                         <span className="text-green-400">+ try {"{"}</span>
                       </code>
@@ -320,8 +315,8 @@ const Hero = () => {
                       </code>
                     </pre>
                   </div>
-                  <div className="px-4 md:px-6 py-4 border-t border-gray-700 bg-gray-800">
-                    <div className="flex items-center gap-2 text-xs font-sans">
+                  <div className="px-2 md:px-6 py-1.5 md:py-4 border-t border-gray-700 bg-gray-800">
+                    <div className="flex items-center gap-1 md:gap-2 text-[9px] md:text-xs font-sans">
                       <span className="text-green-500">✓</span>
                       <span className="text-gray-400">
                         All tests passing • 3 files changed • +47 -12 lines

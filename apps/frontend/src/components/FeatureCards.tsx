@@ -58,7 +58,7 @@ const cardVariants = {
 
 const FeatureCards = () => {
   return (
-    <section className="py-8 md:py-16 px-4 md:px-8 lg:px-12 bg-background overflow-hidden">
+    <section className="py-6 md:py-16 px-3 md:px-8 lg:px-12 bg-background overflow-hidden">
       <div className="max-w-[1600px] mx-auto">
         {/* Mobile View - Stacked */}
         <motion.div
@@ -69,23 +69,23 @@ const FeatureCards = () => {
           variants={containerVariants}
         >
           {/* Process Visualization - Full Width on Mobile */}
-          <div className="w-full flex items-center justify-center py-8">
+          <div className="w-full flex items-center justify-center py-4">
             <ProcessVisualization />
           </div>
 
           {/* Feature Cards - Stacked on Mobile */}
           {features.map((feature, index) => (
             <motion.div key={index} variants={cardVariants}>
-              <Card className="bg-white border-foreground shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 rounded-2xl">
-                <CardContent className="p-5 flex flex-col">
+              <Card className="bg-white border-foreground shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 rounded-xl">
+                <CardContent className="p-3 flex items-start gap-3">
                   {React.createElement(feature.icon, {
-                    className: "w-10 h-10 mb-3 stroke-[1.5] text-foreground",
+                    className: "w-7 h-7 stroke-[1.5] text-foreground flex-shrink-0 mt-0.5",
                   })}
-                  <div>
-                    <h3 className="font-sans text-lg font-bold mb-1.5 text-foreground">
+                  <div className="min-w-0">
+                    <h3 className="font-sans text-sm font-bold mb-0.5 text-foreground">
                       {feature.title}
                     </h3>
-                    <p className="font-sans text-sm leading-relaxed text-foreground">
+                    <p className="font-sans text-xs leading-relaxed text-foreground">
                       {feature.description}
                     </p>
                   </div>

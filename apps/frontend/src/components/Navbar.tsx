@@ -104,6 +104,7 @@ const Navbar = () => {
             variant="cta"
             size="default"
             className="rounded-full hidden lg:block"
+            onClick={() => window.open("https://github.com/signup", "_blank")}
           >
             Sign Up
           </Button>

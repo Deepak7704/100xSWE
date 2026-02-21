@@ -134,21 +134,33 @@ export default function Dashboard() {
     }
   };
 
-  if (isLoading || loadingRepos) {
+  // Show loading only while auth is resolving
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-10 w-10 border-2 border-foreground border-t-transparent mb-4"></div>
-          <p className="text-muted-foreground text-sm">
-            {isLoading ? "Loading..." : "Fetching repositories..."}
-          </p>
+          <p className="text-muted-foreground text-sm">Loading...</p>
         </div>
       </div>
     );
   }
 
+  // If not authenticated, don't render anything (useEffect will redirect to "/")
   if (!user) {
     return null;
+  }
+
+  // Show loading while fetching repos (only for authenticated users)
+  if (loadingRepos) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-10 w-10 border-2 border-foreground border-t-transparent mb-4"></div>
+          <p className="text-muted-foreground text-sm">Fetching repositories...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -245,9 +257,8 @@ export default function Dashboard() {
                     key={repo.id}
                     type="button"
                     onClick={() => handleRepoSelect(repo)}
-                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                      index === 0 ? "rounded-t-2xl" : ""
-                    } ${index === filteredRepos.length - 1 ? "rounded-b-2xl" : ""}`}
+                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${index === 0 ? "rounded-t-2xl" : ""
+                      } ${index === filteredRepos.length - 1 ? "rounded-b-2xl" : ""}`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">

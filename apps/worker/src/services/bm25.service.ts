@@ -19,9 +19,9 @@ interface BM25Result {
 
 interface BM25Index {
   documents: Record<string, BM25Document>;
-  invertedIndex: Record<string, string[]>;
-  tokenFrequency: Record<string, Record<string, number>>;
-  documentFrequency: Record<string, number>;
+  invertedIndex: Record<string, string[]>; // Token → Document IDs mapping
+  tokenFrequency: Record<string, Record<string, number>>; // Doc → Token → Count
+  documentFrequency: Record<string, number>; // Token → Number of docs containing it
   avgDocLength: number;
   metadata: {
     timestamp: string;
@@ -40,8 +40,8 @@ export class BM25Service {
   private documentFrequency: Map<string, number> = new Map();
   private avgDocLength: number = 0;
 
-  private readonly K1 = 1.5;
-  private readonly B = 0.75;
+  private readonly K1 = 1.5; // Controls term frequency impact
+  private readonly B = 0.75; // Controls doc length impact through normalization
   private readonly STOP_WORDS = new Set([
     "the",
     "a",
@@ -220,7 +220,7 @@ export class BM25Service {
           (idf * freq * (this.K1 + 1)) /
           (freq +
             this.K1 *
-              (1 - this.B + this.B * (doc.tokens.length / this.avgDocLength)));
+            (1 - this.B + this.B * (doc.tokens.length / this.avgDocLength)));
 
         scores.set(docId, (scores.get(docId) || 0) + bm25Score);
       }

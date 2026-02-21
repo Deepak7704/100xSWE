@@ -1,4 +1,5 @@
 import React from "react";
+import Image from "next/image";
 import {
   Code,
   GitBranch,
@@ -11,15 +12,16 @@ import {
   Search,
   GitPullRequest,
 } from "lucide-react";
+import DeepDive from "@/components/DeepDive";
 
 export default function DocumentationPage() {
   return (
     <div className="min-h-screen bg-white text-black">
       {/* Header */}
       <header className="border-b border-black">
-        <div className="max-w-6xl mx-auto px-6 py-8">
-          <h1 className="text-5xl font-bold mb-3">100x SWE</h1>
-          <p className="text-xl text-gray-700">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3">100xSWE</h1>
+          <p className="text-base sm:text-lg md:text-xl text-gray-700">
             Automated Pull Request Generation System with AI-Powered Code
             Intelligence
           </p>
@@ -27,21 +29,38 @@ export default function DocumentationPage() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-6 py-12">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        {/* Architecture Image */}
+        <section className="mb-12 sm:mb-16">
+          <div className="border-2 border-black overflow-hidden">
+            <Image
+              src="/Architecture.png"
+              alt="100xSWE System Architecture Diagram"
+              width={1200}
+              height={675}
+              className="w-full h-auto"
+              priority
+            />
+          </div>
+          <p className="text-sm text-gray-500 text-center mt-3">
+            High-level system architecture — from GitHub issue to pull request
+          </p>
+        </section>
+
         {/* Overview Section */}
-        <section className="mb-16">
-          <h2 className="text-3xl font-bold mb-6 flex items-center gap-3">
-            <Zap className="w-8 h-8" />
+        <section className="mb-12 sm:mb-16">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
+            <Zap className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0" />
             Project Overview
           </h2>
-          <div className="border-2 border-black p-6 bg-gray-50">
-            <p className="text-lg leading-relaxed mb-4">
+          <div className="border-2 border-black p-4 sm:p-6 bg-gray-50">
+            <p className="text-base sm:text-lg leading-relaxed mb-4">
               This system automates the entire pull request workflow by
               combining TypeScript AST parsing, hybrid search algorithms, and
               LangGraph orchestration to generate, validate, and test code
-              changes with minimal manual intervention [memory:3][memory:4].
+              changes with minimal manual intervention.
             </p>
-            <p className="text-lg leading-relaxed">
+            <p className="text-base sm:text-lg leading-relaxed">
               The architecture leverages vector embeddings, BM25 keyword
               indexing, and reciprocal rank fusion to intelligently retrieve
               relevant code files, while E2B sandboxes provide isolated testing
@@ -51,13 +70,13 @@ export default function DocumentationPage() {
         </section>
 
         {/* Architecture Section */}
-        <section className="mb-16">
-          <h2 className="text-3xl font-bold mb-6 flex items-center gap-3">
-            <Cpu className="w-8 h-8" />
+        <section className="mb-12 sm:mb-16">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
+            <Cpu className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0" />
             System Architecture
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-8">
             <ArchitectureCard
               title="Frontend"
               description="Next.js + TypeScript interface for monitoring PR generation, viewing logs, and managing GitHub integrations"
@@ -80,9 +99,9 @@ export default function DocumentationPage() {
         </section>
 
         {/* Core Features Section */}
-        <section className="mb-16">
-          <h2 className="text-3xl font-bold mb-6 flex items-center gap-3">
-            <CheckCircle className="w-8 h-8" />
+        <section className="mb-12 sm:mb-16">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
+            <CheckCircle className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0" />
             Core Features
           </h2>
 
@@ -174,9 +193,9 @@ export default function DocumentationPage() {
         </section>
 
         {/* Workflow Section */}
-        <section className="mb-16">
-          <h2 className="text-3xl font-bold mb-6 flex items-center gap-3">
-            <GitPullRequest className="w-8 h-8" />
+        <section className="mb-12 sm:mb-16">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
+            <GitPullRequest className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0" />
             End-to-End Workflow
           </h2>
 
@@ -243,13 +262,13 @@ export default function DocumentationPage() {
         </section>
 
         {/* Tech Stack Section */}
-        <section className="mb-16">
-          <h2 className="text-3xl font-bold mb-6 flex items-center gap-3">
-            <Code className="w-8 h-8" />
+        <section className="mb-12 sm:mb-16">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
+            <Code className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0" />
             Technology Stack
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             <TechStackCard
               category="Backend"
               technologies={[
@@ -296,219 +315,17 @@ export default function DocumentationPage() {
           </div>
         </section>
 
-        {/* Database Schema Section */}
-        <section className="mb-16">
-          <h2 className="text-3xl font-bold mb-6 flex items-center gap-3">
-            <Database className="w-8 h-8" />
-            Database Schema
-          </h2>
-
-          <div className="space-y-4">
-            <SchemaTable
-              tableName="User"
-              fields={[
-                {
-                  name: "id",
-                  type: "String (UUID)",
-                  description: "Primary key, unique user identifier",
-                },
-                {
-                  name: "email",
-                  type: "String",
-                  description: "User email from GitHub OAuth",
-                },
-                {
-                  name: "username",
-                  type: "String",
-                  description: "GitHub username",
-                },
-                {
-                  name: "githubId",
-                  type: "String",
-                  description: "GitHub user ID for API calls",
-                },
-                {
-                  name: "accessToken",
-                  type: "String (encrypted)",
-                  description: "GitHub OAuth token for repo access",
-                },
-                {
-                  name: "createdAt",
-                  type: "DateTime",
-                  description: "Account creation timestamp",
-                },
-              ]}
-            />
-
-            <SchemaTable
-              tableName="Repository"
-              fields={[
-                {
-                  name: "id",
-                  type: "String (UUID)",
-                  description: "Primary key",
-                },
-                {
-                  name: "userId",
-                  type: "String (FK)",
-                  description: "Foreign key to User",
-                },
-                {
-                  name: "repoName",
-                  type: "String",
-                  description: "Full repo name (owner/repo)",
-                },
-                {
-                  name: "installationId",
-                  type: "String",
-                  description: "GitHub App installation ID",
-                },
-                {
-                  name: "indexed",
-                  type: "Boolean",
-                  description: "Whether codebase has been indexed",
-                },
-                {
-                  name: "lastIndexedAt",
-                  type: "DateTime?",
-                  description: "Last indexing timestamp",
-                },
-              ]}
-            />
-
-            <SchemaTable
-              tableName="Session"
-              fields={[
-                {
-                  name: "id",
-                  type: "String (UUID)",
-                  description: "Primary key",
-                },
-                {
-                  name: "userId",
-                  type: "String (FK)",
-                  description: "Foreign key to User",
-                },
-                {
-                  name: "token",
-                  type: "String",
-                  description: "Session token hash",
-                },
-                {
-                  name: "expiresAt",
-                  type: "DateTime",
-                  description: "Session expiration time",
-                },
-                {
-                  name: "createdAt",
-                  type: "DateTime",
-                  description: "Session creation timestamp",
-                },
-              ]}
-            />
-
-            <SchemaTable
-              tableName="CodeIndex"
-              fields={[
-                {
-                  name: "id",
-                  type: "String (UUID)",
-                  description: "Primary key",
-                },
-                {
-                  name: "repoId",
-                  type: "String (FK)",
-                  description: "Foreign key to Repository",
-                },
-                {
-                  name: "filePath",
-                  type: "String",
-                  description: "Relative path to file in repo",
-                },
-                {
-                  name: "embedding",
-                  type: "Vector",
-                  description: "Vector embedding of file content",
-                },
-                {
-                  name: "bm25Score",
-                  type: "Float",
-                  description: "BM25 relevance score",
-                },
-                {
-                  name: "astHash",
-                  type: "String",
-                  description: "Hash of AST for change detection",
-                },
-              ]}
-            />
-          </div>
-        </section>
-
-        {/* API Endpoints Section */}
-        <section className="mb-16">
-          <h2 className="text-3xl font-bold mb-6">API Endpoints</h2>
-
-          <div className="space-y-4">
-            <EndpointCard
-              method="GET"
-              path="/health"
-              description="Health check endpoint returning server status"
-              response='{ "status": "ok", "timestamp": "ISO-8601" }'
-            />
-            <EndpointCard
-              method="POST"
-              path="/github-webhook"
-              description="Unified webhook handler for GitHub events (push, PR, issues)"
-              auth="GitHub Signature Verification"
-            />
-            <EndpointCard
-              method="GET"
-              path="/auth/login"
-              description="Initiates GitHub OAuth flow"
-              response="Redirects to GitHub authorization page"
-            />
-            <EndpointCard
-              method="GET"
-              path="/auth/callback"
-              description="OAuth callback handling token exchange and session creation"
-              response="JWT token + session cookie"
-            />
-            <EndpointCard
-              method="POST"
-              path="/auth/logout"
-              description="Invalidates session and clears authentication"
-              auth="JWT Required"
-            />
-            <EndpointCard
-              method="POST"
-              path="/api/index-repo"
-              description="Manually trigger repository indexing"
-              auth="JWT Required"
-            />
-            <EndpointCard
-              method="GET"
-              path="/api/repos"
-              description="List all repositories for authenticated user"
-              auth="JWT Required"
-            />
-            <EndpointCard
-              method="POST"
-              path="/installation/created"
-              description="Handle GitHub App installation events"
-              auth="GitHub Signature"
-            />
-          </div>
-        </section>
+        {/* Technical Deep Dive */}
+        <DeepDive />
 
         {/* Key Optimizations Section */}
-        <section className="mb-16">
-          <h2 className="text-3xl font-bold mb-6 flex items-center gap-3">
-            <Zap className="w-8 h-8" />
+        <section className="mb-12 sm:mb-16">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
+            <Zap className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0" />
             Key Optimizations
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             <OptimizationCard
               title="Token Efficiency"
               points={[
@@ -549,10 +366,10 @@ export default function DocumentationPage() {
         </section>
 
         {/* User Journey Section */}
-        <section className="mb-16">
-          <h2 className="text-3xl font-bold mb-6">User Journey Example</h2>
+        <section className="mb-12 sm:mb-16">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">User Journey Example</h2>
 
-          <div className="border-2 border-black p-6 bg-gray-50">
+          <div className="border-2 border-black p-4 sm:p-6 bg-gray-50">
             <div className="space-y-4">
               <JourneyStep
                 number={1}
@@ -590,12 +407,12 @@ export default function DocumentationPage() {
 
         {/* Future Enhancements Section */}
         <section>
-          <h2 className="text-3xl font-bold mb-6 flex items-center gap-3">
-            <Search className="w-8 h-8" />
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
+            <Search className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0" />
             Future Enhancements
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <EnhancementCard
               title="Multi-language Support"
               description="Extend AST parsing to Python, Java, Go, and Rust codebases"
@@ -625,9 +442,9 @@ export default function DocumentationPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-black mt-16">
-        <div className="max-w-6xl mx-auto px-6 py-8">
-          <p className="text-center text-gray-600">
+      <footer className="border-t border-black mt-12 sm:mt-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          <p className="text-center text-gray-600 text-sm sm:text-base">
             Built with TypeScript, LangGraph, and Next.js | Deployed on
             DigitalOcean & Vercel
           </p>
@@ -653,12 +470,12 @@ function ArchitectureCard({
   icon,
 }: ArchitectureCardProps) {
   return (
-    <div className="border-2 border-black p-6 hover:bg-gray-50 transition-colors">
+    <div className="border-2 border-black p-4 sm:p-6 hover:bg-gray-50 transition-colors">
       <div className="flex items-center gap-2 mb-3">
         {icon}
-        <h3 className="text-xl font-bold">{title}</h3>
+        <h3 className="text-lg sm:text-xl font-bold">{title}</h3>
       </div>
-      <p className="text-gray-700 mb-4 leading-relaxed">{description}</p>
+      <p className="text-sm sm:text-base text-gray-700 mb-4 leading-relaxed">{description}</p>
       <div className="inline-block border border-black px-3 py-1 text-sm font-mono">
         {deployment}
       </div>
@@ -680,9 +497,9 @@ function FeatureBlock({
   useCases,
 }: FeatureBlockProps) {
   return (
-    <div className="border-2 border-black p-6 hover:bg-gray-50 transition-colors">
-      <h3 className="text-2xl font-bold mb-3">{title}</h3>
-      <p className="text-gray-700 mb-4 leading-relaxed">{description}</p>
+    <div className="border-2 border-black p-4 sm:p-6 hover:bg-gray-50 transition-colors">
+      <h3 className="text-xl sm:text-2xl font-bold mb-3">{title}</h3>
+      <p className="text-sm sm:text-base text-gray-700 mb-4 leading-relaxed">{description}</p>
 
       <div className="mb-4">
         <h4 className="font-bold mb-2">Tech Stack:</h4>
@@ -722,15 +539,15 @@ interface WorkflowStepProps {
 
 function WorkflowStep({ step, title, description, isLast }: WorkflowStepProps) {
   return (
-    <div className={`flex gap-6 p-6 ${!isLast ? "border-b border-black" : ""}`}>
+    <div className={`flex gap-3 sm:gap-6 p-4 sm:p-6 ${!isLast ? "border-b border-black" : ""}`}>
       <div className="flex-shrink-0">
-        <div className="w-12 h-12 border-2 border-black flex items-center justify-center font-bold text-lg">
+        <div className="w-9 h-9 sm:w-12 sm:h-12 border-2 border-black flex items-center justify-center font-bold text-sm sm:text-lg">
           {step}
         </div>
       </div>
-      <div className="flex-grow">
-        <h3 className="text-xl font-bold mb-2">{title}</h3>
-        <p className="text-gray-700 leading-relaxed">{description}</p>
+      <div className="flex-grow min-w-0">
+        <h3 className="text-base sm:text-xl font-bold mb-1 sm:mb-2">{title}</h3>
+        <p className="text-sm sm:text-base text-gray-700 leading-relaxed">{description}</p>
       </div>
     </div>
   );
@@ -743,8 +560,8 @@ interface TechStackCardProps {
 
 function TechStackCard({ category, technologies }: TechStackCardProps) {
   return (
-    <div className="border-2 border-black p-6">
-      <h3 className="text-xl font-bold mb-4">{category}</h3>
+    <div className="border-2 border-black p-4 sm:p-6">
+      <h3 className="text-lg sm:text-xl font-bold mb-4">{category}</h3>
       <ul className="space-y-2">
         {technologies.map((tech, idx) => (
           <li key={idx} className="flex items-center gap-2">
@@ -757,80 +574,7 @@ function TechStackCard({ category, technologies }: TechStackCardProps) {
   );
 }
 
-interface SchemaTableProps {
-  tableName: string;
-  fields: Array<{ name: string; type: string; description: string }>;
-}
 
-function SchemaTable({ tableName, fields }: SchemaTableProps) {
-  return (
-    <div className="border-2 border-black">
-      <div className="bg-black text-white px-4 py-3">
-        <h3 className="text-lg font-bold font-mono">{tableName}</h3>
-      </div>
-      <div className="divide-y divide-black">
-        {fields.map((field, idx) => (
-          <div
-            key={idx}
-            className="grid grid-cols-12 gap-4 p-4 hover:bg-gray-50"
-          >
-            <div className="col-span-3 font-mono font-bold">{field.name}</div>
-            <div className="col-span-3 font-mono text-sm text-gray-600">
-              {field.type}
-            </div>
-            <div className="col-span-6 text-gray-700">{field.description}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-interface EndpointCardProps {
-  method: string;
-  path: string;
-  description: string;
-  auth?: string;
-  response?: string;
-}
-
-function EndpointCard({
-  method,
-  path,
-  description,
-  auth,
-  response,
-}: EndpointCardProps) {
-  const methodColors: Record<string, string> = {
-    GET: "bg-white border-2 border-black",
-    POST: "bg-black text-white",
-    PUT: "bg-gray-200 border-2 border-black",
-    DELETE: "bg-gray-800 text-white",
-  };
-
-  return (
-    <div className="border-2 border-black p-4 hover:bg-gray-50 transition-colors">
-      <div className="flex items-center gap-3 mb-2">
-        <span
-          className={`${methodColors[method]} px-3 py-1 text-sm font-bold font-mono`}
-        >
-          {method}
-        </span>
-        <span className="font-mono text-lg">{path}</span>
-      </div>
-      <p className="text-gray-700 mb-2">{description}</p>
-      {auth && (
-        <p className="text-sm">
-          <span className="font-bold">Auth:</span>{" "}
-          <span className="font-mono">{auth}</span>
-        </p>
-      )}
-      {response && (
-        <p className="text-sm font-mono text-gray-600 mt-2">{response}</p>
-      )}
-    </div>
-  );
-}
 
 interface OptimizationCardProps {
   title: string;
@@ -839,8 +583,8 @@ interface OptimizationCardProps {
 
 function OptimizationCard({ title, points }: OptimizationCardProps) {
   return (
-    <div className="border-2 border-black p-6">
-      <h3 className="text-xl font-bold mb-4">{title}</h3>
+    <div className="border-2 border-black p-4 sm:p-6">
+      <h3 className="text-lg sm:text-xl font-bold mb-4">{title}</h3>
       <ul className="space-y-2">
         {points.map((point, idx) => (
           <li key={idx} className="flex items-start gap-2">
@@ -880,12 +624,12 @@ interface EnhancementCardProps {
 
 function EnhancementCard({ title, description }: EnhancementCardProps) {
   return (
-    <div className="border-2 border-black p-4 hover:bg-gray-50 transition-colors">
-      <h3 className="font-bold mb-2 flex items-center gap-2">
-        <AlertCircle className="w-5 h-5" />
+    <div className="border-2 border-black p-3 sm:p-4 hover:bg-gray-50 transition-colors">
+      <h3 className="font-bold mb-2 flex items-center gap-2 text-sm sm:text-base">
+        <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
         {title}
       </h3>
-      <p className="text-gray-700 text-sm">{description}</p>
+      <p className="text-gray-700 text-xs sm:text-sm">{description}</p>
     </div>
   );
 }

@@ -50,8 +50,8 @@ const ProcessVisualization = () => {
   };
 
   return (
-    <div className="relative w-full h-full min-h-[400px] flex items-center justify-center">
-      <div className="relative w-full aspect-square max-w-[500px] md:max-w-[600px] mx-auto">
+    <div className="relative w-full h-full min-h-[280px] md:min-h-[400px] flex items-center justify-center">
+      <div className="relative w-full aspect-square max-w-[320px] md:max-w-[600px] mx-auto">
         {/* Tentacle Connection Lines */}
         <svg
           className="absolute inset-0 w-full h-full pointer-events-none"
