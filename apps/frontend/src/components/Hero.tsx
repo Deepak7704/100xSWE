@@ -222,7 +222,7 @@ const Hero = () => {
             {/* MacBook Frame - scales down on small screens */}
             <div
               className="bg-gray-900 border border-gray-700 rounded-lg md:rounded-2xl shadow-2xl overflow-hidden"
-              style={{ fontSize: 'clamp(10px, 2.5vw, 16px)' }}
+              style={{ fontSize: "clamp(10px, 2.5vw, 16px)" }}
             >
               {/* Title bar - Dark theme */}
               <div className="bg-gray-800 border-b border-gray-700 px-2 md:px-4 py-1.5 md:py-3 flex items-center gap-1.5">

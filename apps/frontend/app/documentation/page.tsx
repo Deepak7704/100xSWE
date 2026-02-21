@@ -20,7 +20,9 @@ export default function DocumentationPage() {
       {/* Header */}
       <header className="border-b border-black">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3">100xSWE</h1>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3">
+            100xSWE
+          </h1>
           <p className="text-base sm:text-lg md:text-xl text-gray-700">
             Automated Pull Request Generation System with AI-Powered Code
             Intelligence
@@ -367,7 +369,9 @@ export default function DocumentationPage() {
 
         {/* User Journey Section */}
         <section className="mb-12 sm:mb-16">
-          <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">User Journey Example</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">
+            User Journey Example
+          </h2>
 
           <div className="border-2 border-black p-4 sm:p-6 bg-gray-50">
             <div className="space-y-4">
@@ -475,7 +479,9 @@ function ArchitectureCard({
         {icon}
         <h3 className="text-lg sm:text-xl font-bold">{title}</h3>
       </div>
-      <p className="text-sm sm:text-base text-gray-700 mb-4 leading-relaxed">{description}</p>
+      <p className="text-sm sm:text-base text-gray-700 mb-4 leading-relaxed">
+        {description}
+      </p>
       <div className="inline-block border border-black px-3 py-1 text-sm font-mono">
         {deployment}
       </div>
@@ -499,7 +505,9 @@ function FeatureBlock({
   return (
     <div className="border-2 border-black p-4 sm:p-6 hover:bg-gray-50 transition-colors">
       <h3 className="text-xl sm:text-2xl font-bold mb-3">{title}</h3>
-      <p className="text-sm sm:text-base text-gray-700 mb-4 leading-relaxed">{description}</p>
+      <p className="text-sm sm:text-base text-gray-700 mb-4 leading-relaxed">
+        {description}
+      </p>
 
       <div className="mb-4">
         <h4 className="font-bold mb-2">Tech Stack:</h4>
@@ -539,7 +547,9 @@ interface WorkflowStepProps {
 
 function WorkflowStep({ step, title, description, isLast }: WorkflowStepProps) {
   return (
-    <div className={`flex gap-3 sm:gap-6 p-4 sm:p-6 ${!isLast ? "border-b border-black" : ""}`}>
+    <div
+      className={`flex gap-3 sm:gap-6 p-4 sm:p-6 ${!isLast ? "border-b border-black" : ""}`}
+    >
       <div className="flex-shrink-0">
         <div className="w-9 h-9 sm:w-12 sm:h-12 border-2 border-black flex items-center justify-center font-bold text-sm sm:text-lg">
           {step}
@@ -547,7 +557,9 @@ function WorkflowStep({ step, title, description, isLast }: WorkflowStepProps) {
       </div>
       <div className="flex-grow min-w-0">
         <h3 className="text-base sm:text-xl font-bold mb-1 sm:mb-2">{title}</h3>
-        <p className="text-sm sm:text-base text-gray-700 leading-relaxed">{description}</p>
+        <p className="text-sm sm:text-base text-gray-700 leading-relaxed">
+          {description}
+        </p>
       </div>
     </div>
   );
@@ -573,8 +585,6 @@ function TechStackCard({ category, technologies }: TechStackCardProps) {
     </div>
   );
 }
-
-
 
 interface OptimizationCardProps {
   title: string;

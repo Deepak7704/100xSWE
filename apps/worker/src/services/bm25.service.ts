@@ -220,7 +220,7 @@ export class BM25Service {
           (idf * freq * (this.K1 + 1)) /
           (freq +
             this.K1 *
-            (1 - this.B + this.B * (doc.tokens.length / this.avgDocLength)));
+              (1 - this.B + this.B * (doc.tokens.length / this.avgDocLength)));
 
         scores.set(docId, (scores.get(docId) || 0) + bm25Score);
       }

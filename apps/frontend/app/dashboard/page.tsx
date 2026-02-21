@@ -157,7 +157,9 @@ export default function Dashboard() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-10 w-10 border-2 border-foreground border-t-transparent mb-4"></div>
-          <p className="text-muted-foreground text-sm">Fetching repositories...</p>
+          <p className="text-muted-foreground text-sm">
+            Fetching repositories...
+          </p>
         </div>
       </div>
     );
@@ -257,8 +259,9 @@ export default function Dashboard() {
                     key={repo.id}
                     type="button"
                     onClick={() => handleRepoSelect(repo)}
-                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${index === 0 ? "rounded-t-2xl" : ""
-                      } ${index === filteredRepos.length - 1 ? "rounded-b-2xl" : ""}`}
+                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                      index === 0 ? "rounded-t-2xl" : ""
+                    } ${index === filteredRepos.length - 1 ? "rounded-b-2xl" : ""}`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">

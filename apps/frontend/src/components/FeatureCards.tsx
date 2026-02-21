@@ -79,7 +79,8 @@ const FeatureCards = () => {
               <Card className="bg-white border-foreground shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 rounded-xl">
                 <CardContent className="p-3 flex items-start gap-3">
                   {React.createElement(feature.icon, {
-                    className: "w-7 h-7 stroke-[1.5] text-foreground flex-shrink-0 mt-0.5",
+                    className:
+                      "w-7 h-7 stroke-[1.5] text-foreground flex-shrink-0 mt-0.5",
                   })}
                   <div className="min-w-0">
                     <h3 className="font-sans text-sm font-bold mb-0.5 text-foreground">
