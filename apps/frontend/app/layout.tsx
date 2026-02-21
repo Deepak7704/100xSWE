@@ -19,8 +19,11 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "100xSWE - From GitHub Issues to Pull Requests in Seconds",
+  title: "100xSWE",
   description: "Convert GitHub issues into pull requests using AI analysis",
+  icons: {
+    icon: "/finallogo.png",
+  },
 };
 
 export default function RootLayout({

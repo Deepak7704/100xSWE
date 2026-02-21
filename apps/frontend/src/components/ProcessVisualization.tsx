@@ -161,11 +161,20 @@ const ProcessVisualization = () => {
                   )}
                 </div>
               </div>
-              <div className="absolute top-full mt-2 md:mt-3 left-1/2 -translate-x-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <div className="bg-foreground text-background px-2 py-1 md:px-3 md:py-1 rounded-full text-[10px] sm:text-xs md:text-sm font-sans font-medium">
-                  {step.title}
+              {/* Tooltip: render above for bottom-half nodes, below for top-half */}
+              {step.angle >= 135 && step.angle <= 315 ? (
+                <div className="absolute bottom-full mb-2 md:mb-3 left-1/2 -translate-x-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="bg-foreground text-background px-2 py-1 md:px-3 md:py-1 rounded-full text-[10px] sm:text-xs md:text-sm font-sans font-medium">
+                    {step.title}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="absolute top-full mt-2 md:mt-3 left-1/2 -translate-x-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="bg-foreground text-background px-2 py-1 md:px-3 md:py-1 rounded-full text-[10px] sm:text-xs md:text-sm font-sans font-medium">
+                    {step.title}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
