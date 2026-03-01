@@ -95,6 +95,11 @@ services:
       # Pinecone Vector Database
       - PINECONE_API_KEY=${PINECONE_API_KEY}
       - PINECONE_HOST=${PINECONE_HOST}
+      
+      # LangSmith Observability
+      - LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2}
+      - LANGCHAIN_API_KEY=${LANGCHAIN_API_KEY}
+      - LANGCHAIN_PROJECT=${LANGCHAIN_PROJECT}
     restart: unless-stopped
     # DNS configuration for external API calls (GitHub, OpenAI, etc.)
     dns:
