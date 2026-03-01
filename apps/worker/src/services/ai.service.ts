@@ -1,5 +1,8 @@
 import { Sandbox } from "@e2b/code-interpreter";
-import { tracedGenerateObject as generateObject, tracedGenerateText as generateText } from "../lib/langsmith";
+import {
+  tracedGenerateObject as generateObject,
+  tracedGenerateText as generateText,
+} from "../lib/langsmith";
 import type { Redis } from "ioredis";
 import gemini from "../lib/ai_config";
 import { GenerationSchema, type GenerateOutput } from "@openswe/shared";

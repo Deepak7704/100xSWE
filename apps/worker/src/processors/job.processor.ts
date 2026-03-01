@@ -74,13 +74,18 @@ export class JobProcessor {
 
         try {
           if (indexingJobId) {
-            console.log(`Waiting for indexing job ${indexingJobId} to complete...`);
+            console.log(
+              `Waiting for indexing job ${indexingJobId} to complete...`
+            );
             await this.waitForIndexing(indexingJobId);
-            console.log(`Indexing complete! Proceeding with code generation...`);
+            console.log(
+              `Indexing complete! Proceeding with code generation...`
+            );
           }
           await job.updateProgress(10);
           console.log("Step 1: Creating sandbox...");
-          const sandbox = await this.sandboxService.getOrCreateSandbox(projectId);
+          const sandbox =
+            await this.sandboxService.getOrCreateSandbox(projectId);
 
           await job.updateProgress(20);
           console.log("Step 2: Cloning repository...");
@@ -125,7 +130,9 @@ export class JobProcessor {
             repoPath
           );
           const codeGraph = graphService.buildGraph(candidateContents);
-          console.log(`Code graph built: ${codeGraph.nodes.size} nodes extracted`);
+          console.log(
+            `Code graph built: ${codeGraph.nodes.size} nodes extracted`
+          );
 
           console.log("\nStep 4.6: Finding dependent files...");
           const dependentFiles = graphService.findDependentFiles(
@@ -153,7 +160,8 @@ export class JobProcessor {
               ...candidateContents,
               ...dependentContents,
             ]);
-            const expandedCodeGraph = graphService.buildGraph(allCandidateContents);
+            const expandedCodeGraph =
+              graphService.buildGraph(allCandidateContents);
             console.log(
               `Expanded code graph: ${expandedCodeGraph.nodes.size} nodes (including dependents)`
             );
@@ -163,7 +171,8 @@ export class JobProcessor {
                 expandedCodeGraph,
                 filePath
               );
-              const formatted = codeSkeletonService.formatSkeletonForLLM(skeleton);
+              const formatted =
+                codeSkeletonService.formatSkeletonForLLM(skeleton);
               skeletons.set(filePath, `[CANDIDATE FILE]\n${formatted}`);
             });
 
@@ -172,7 +181,8 @@ export class JobProcessor {
                 expandedCodeGraph,
                 filePath
               );
-              const formatted = codeSkeletonService.formatSkeletonForLLM(skeleton);
+              const formatted =
+                codeSkeletonService.formatSkeletonForLLM(skeleton);
               skeletons.set(filePath, `[DEPENDENT FILE]\n${formatted}`);
             });
 
@@ -187,7 +197,8 @@ export class JobProcessor {
                 codeGraph,
                 filePath
               );
-              const formatted = codeSkeletonService.formatSkeletonForLLM(skeleton);
+              const formatted =
+                codeSkeletonService.formatSkeletonForLLM(skeleton);
               skeletons.set(filePath, formatted);
             });
             console.log(`Generated ${skeletons.size} code skeletons`);
@@ -195,11 +206,12 @@ export class JobProcessor {
 
           console.log("Step 5: Selecting files to modify...");
           const keywords = extractKeywords(task);
-          let filesToModify = await this.aiService.selectFilesToModifyWithSkeletons(
-            task,
-            skeletons,
-            repoPath
-          );
+          let filesToModify =
+            await this.aiService.selectFilesToModifyWithSkeletons(
+              task,
+              skeletons,
+              repoPath
+            );
 
           if (filesToModify.length === 0) {
             console.warn(
@@ -231,13 +243,16 @@ export class JobProcessor {
           const fileContents =
             existingFiles.length > 0
               ? await this.sandboxService.getFileContents(
-                sandbox,
-                existingFiles,
-                Infinity,
-                repoPath
-              )
+                  sandbox,
+                  existingFiles,
+                  Infinity,
+                  repoPath
+                )
               : new Map<string, string>();
-          const allFiles = await this.sandboxService.getFileTree(sandbox, repoPath);
+          const allFiles = await this.sandboxService.getFileTree(
+            sandbox,
+            repoPath
+          );
 
           await job.updateProgress(70);
           console.log("\nStep 7: Starting LangGraph Code Generation Workflow");
@@ -286,7 +301,9 @@ export class JobProcessor {
           console.log(
             `Iterations: ${workflowResult.currentIteration}/${workflowResult.maxIterations}`
           );
-          console.log(`Validations Passed: ${workflowResult.allValidationsPassed}`);
+          console.log(
+            `Validations Passed: ${workflowResult.allValidationsPassed}`
+          );
 
           if (workflowResult.status !== "success" || !workflowResult.prUrl) {
             const errorMsg =
