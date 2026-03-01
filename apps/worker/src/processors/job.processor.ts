@@ -1,5 +1,6 @@
 import Redis from "ioredis";
 import { Queue } from "bullmq";
+import { traceable } from "langsmith/traceable";
 import { GitHubService } from "../services/github.service";
 import { GitService } from "../services/git.service";
 import { SandboxService } from "../services/sandbox.service";
@@ -37,287 +38,305 @@ export class JobProcessor {
     fileOperations: any[];
     explanation: string;
   }> {
-    const {
-      repoUrl,
-      parentRepoUrl,
-      task,
-      repoId,
-      parentRepoId,
-      isFork,
-      indexingJobId,
-      githubToken,
-    } = job.data;
-    const projectId = `job-${job.id}`;
+    // Wrap entire job in a LangSmith trace for per-job token tracking
+    return traceable(
+      async () => {
+        const {
+          repoUrl,
+          parentRepoUrl,
+          task,
+          repoId,
+          parentRepoId,
+          isFork,
+          indexingJobId,
+          githubToken,
+        } = job.data;
+        const projectId = `job-${job.id}`;
 
-    console.log(`Processing job ${job.id}: ${task}`);
-    console.log(`Repository ID: ${repoId}`);
-    console.log(
-      `Workflow: ${isFork ? "FORK (cross-repo PR)" : "SAME-REPO (same-repo PR)"}`
-    );
-    if (isFork) {
-      console.log(`  Fork: ${repoId}`);
-      console.log(`  Parent: ${parentRepoId}`);
-    }
-
-    if (!githubToken) {
-      throw new Error(
-        "No GitHub token available. Please ensure you're logged in with GitHub."
-      );
-    }
-
-    const githubService = new GitHubService(githubToken);
-    console.log(`Using user OAuth token for GitHub operations`);
-
-    try {
-      if (indexingJobId) {
-        console.log(`Waiting for indexing job ${indexingJobId} to complete...`);
-        await this.waitForIndexing(indexingJobId);
-        console.log(`Indexing complete! Proceeding with code generation...`);
-      }
-      await job.updateProgress(10);
-      console.log("Step 1: Creating sandbox...");
-      const sandbox = await this.sandboxService.getOrCreateSandbox(projectId);
-
-      await job.updateProgress(20);
-      console.log("Step 2: Cloning repository...");
-      const repoPath = await this.gitService.cloneRepository(
-        sandbox,
-        repoUrl,
-        githubToken
-      );
-
-      console.log("Step 3.5: Detecting package manager...");
-      const packageManager = await this.sandboxService.detectPackageManager(
-        sandbox,
-        repoPath
-      );
-      console.log(`Detected package manager: ${packageManager}\n`);
-
-      await job.updateProgress(40);
-      console.log("Step 4: Finding relevant files using Hybrid Search...");
-      const relevantFiles = await this.aiService.findRelevantFilesHybrid(
-        this.redis,
-        repoId,
-        task,
-        20
-      );
-
-      if (relevantFiles.length === 0) {
-        throw new Error(
-          "No relevant files found. Repository may not be indexed yet."
-        );
-      }
-
-      console.log(
-        "Step 4.5:Building the code graph and code skeletons for candidate files"
-      );
-      const graphService = new EnhancedCodeGraphService();
-      const codeSkeletonService = new CodeSkeletonService();
-
-      const candidateContents = await this.sandboxService.getFileContents(
-        sandbox,
-        relevantFiles,
-        Infinity,
-        repoPath
-      );
-      const codeGraph = graphService.buildGraph(candidateContents);
-      console.log(`Code graph built: ${codeGraph.nodes.size} nodes extracted`);
-
-      console.log("\nStep 4.6: Finding dependent files...");
-      const dependentFiles = graphService.findDependentFiles(
-        codeGraph,
-        relevantFiles,
-        relevantFiles
-      );
-
-      const skeletons = new Map<string, string>();
-
-      if (dependentFiles.length > 0) {
-        console.log(`Found ${dependentFiles.length} dependent files:`);
-        dependentFiles.forEach((file, idx) => {
-          console.log(`  ${idx + 1}. ${file}`);
-        });
-
-        const dependentContents = await this.sandboxService.getFileContents(
-          sandbox,
-          dependentFiles,
-          Infinity,
-          repoPath
-        );
-
-        const allCandidateContents = new Map([
-          ...candidateContents,
-          ...dependentContents,
-        ]);
-        const expandedCodeGraph = graphService.buildGraph(allCandidateContents);
+        console.log(`Processing job ${job.id}: ${task}`);
+        console.log(`Repository ID: ${repoId}`);
         console.log(
-          `Expanded code graph: ${expandedCodeGraph.nodes.size} nodes (including dependents)`
+          `Workflow: ${isFork ? "FORK (cross-repo PR)" : "SAME-REPO (same-repo PR)"}`
         );
+        if (isFork) {
+          console.log(`  Fork: ${repoId}`);
+          console.log(`  Parent: ${parentRepoId}`);
+        }
 
-        relevantFiles.forEach((filePath) => {
-          const skeleton = codeSkeletonService.generateSkeleton(
-            expandedCodeGraph,
-            filePath
+        if (!githubToken) {
+          throw new Error(
+            "No GitHub token available. Please ensure you're logged in with GitHub."
           );
-          const formatted = codeSkeletonService.formatSkeletonForLLM(skeleton);
-          skeletons.set(filePath, `[CANDIDATE FILE]\n${formatted}`);
-        });
+        }
 
-        dependentFiles.forEach((filePath) => {
-          const skeleton = codeSkeletonService.generateSkeleton(
-            expandedCodeGraph,
-            filePath
+        const githubService = new GitHubService(githubToken);
+        console.log(`Using user OAuth token for GitHub operations`);
+
+        try {
+          if (indexingJobId) {
+            console.log(`Waiting for indexing job ${indexingJobId} to complete...`);
+            await this.waitForIndexing(indexingJobId);
+            console.log(`Indexing complete! Proceeding with code generation...`);
+          }
+          await job.updateProgress(10);
+          console.log("Step 1: Creating sandbox...");
+          const sandbox = await this.sandboxService.getOrCreateSandbox(projectId);
+
+          await job.updateProgress(20);
+          console.log("Step 2: Cloning repository...");
+          const repoPath = await this.gitService.cloneRepository(
+            sandbox,
+            repoUrl,
+            githubToken
           );
-          const formatted = codeSkeletonService.formatSkeletonForLLM(skeleton);
-          skeletons.set(filePath, `[DEPENDENT FILE]\n${formatted}`);
-        });
 
-        console.log(
-          `Generated ${skeletons.size} code skeletons (${relevantFiles.length} candidates + ${dependentFiles.length} dependents)`
-        );
-      } else {
-        console.log("No dependent files found.");
+          console.log("Step 3.5: Detecting package manager...");
+          const packageManager = await this.sandboxService.detectPackageManager(
+            sandbox,
+            repoPath
+          );
+          console.log(`Detected package manager: ${packageManager}\n`);
 
-        relevantFiles.forEach((filePath) => {
-          const skeleton = codeSkeletonService.generateSkeleton(
+          await job.updateProgress(40);
+          console.log("Step 4: Finding relevant files using Hybrid Search...");
+          const relevantFiles = await this.aiService.findRelevantFilesHybrid(
+            this.redis,
+            repoId,
+            task,
+            20
+          );
+
+          if (relevantFiles.length === 0) {
+            throw new Error(
+              "No relevant files found. Repository may not be indexed yet."
+            );
+          }
+
+          console.log(
+            "Step 4.5:Building the code graph and code skeletons for candidate files"
+          );
+          const graphService = new EnhancedCodeGraphService();
+          const codeSkeletonService = new CodeSkeletonService();
+
+          const candidateContents = await this.sandboxService.getFileContents(
+            sandbox,
+            relevantFiles,
+            Infinity,
+            repoPath
+          );
+          const codeGraph = graphService.buildGraph(candidateContents);
+          console.log(`Code graph built: ${codeGraph.nodes.size} nodes extracted`);
+
+          console.log("\nStep 4.6: Finding dependent files...");
+          const dependentFiles = graphService.findDependentFiles(
             codeGraph,
-            filePath
+            relevantFiles,
+            relevantFiles
           );
-          const formatted = codeSkeletonService.formatSkeletonForLLM(skeleton);
-          skeletons.set(filePath, formatted);
-        });
-        console.log(`Generated ${skeletons.size} code skeletons`);
-      }
 
-      console.log("Step 5: Selecting files to modify...");
-      const keywords = extractKeywords(task);
-      let filesToModify = await this.aiService.selectFilesToModifyWithSkeletons(
-        task,
-        skeletons,
-        repoPath
-      );
+          const skeletons = new Map<string, string>();
 
-      if (filesToModify.length === 0) {
-        console.warn(
-          "\nFallback: LLM selected 0 files, using hybrid search results"
-        );
+          if (dependentFiles.length > 0) {
+            console.log(`Found ${dependentFiles.length} dependent files:`);
+            dependentFiles.forEach((file, idx) => {
+              console.log(`  ${idx + 1}. ${file}`);
+            });
 
-        const topN = Math.min(5, relevantFiles.length);
-        filesToModify = relevantFiles.slice(0, topN);
-
-        console.log(
-          `Selected top ${filesToModify.length} files from hybrid search`
-        );
-        filesToModify.forEach((file, idx) => {
-          console.log(`  ${idx + 1}. ${file}`);
-        });
-        console.log("");
-      }
-
-      await job.updateProgress(60);
-      console.log("Step 6: Analyzing files (existing vs new)...");
-      const { existingFiles, newFiles } =
-        await this.sandboxService.separateExistingAndNewFiles(
-          sandbox,
-          filesToModify,
-          repoPath
-        );
-
-      console.log("Step 6.5: Reading existing file contents...");
-      const fileContents =
-        existingFiles.length > 0
-          ? await this.sandboxService.getFileContents(
+            const dependentContents = await this.sandboxService.getFileContents(
               sandbox,
-              existingFiles,
+              dependentFiles,
               Infinity,
               repoPath
-            )
-          : new Map<string, string>();
-      const allFiles = await this.sandboxService.getFileTree(sandbox, repoPath);
+            );
 
-      await job.updateProgress(70);
-      console.log("\nStep 7: Starting LangGraph Code Generation Workflow");
+            const allCandidateContents = new Map([
+              ...candidateContents,
+              ...dependentContents,
+            ]);
+            const expandedCodeGraph = graphService.buildGraph(allCandidateContents);
+            console.log(
+              `Expanded code graph: ${expandedCodeGraph.nodes.size} nodes (including dependents)`
+            );
 
-      const branchName = generateBranchName(task);
-      const graph = createCodeValidationGraph();
+            relevantFiles.forEach((filePath) => {
+              const skeleton = codeSkeletonService.generateSkeleton(
+                expandedCodeGraph,
+                filePath
+              );
+              const formatted = codeSkeletonService.formatSkeletonForLLM(skeleton);
+              skeletons.set(filePath, `[CANDIDATE FILE]\n${formatted}`);
+            });
 
-      const workflowResult = await graph.invoke({
-        repoUrl: parentRepoUrl || repoUrl,
-        repoId: parentRepoId || repoId,
-        task,
-        forkUrl: repoUrl,
-        forkOwner: repoId.split("/")[0],
-        branchName,
-        isFork: isFork || false,
-        packageManager,
-        relevantFiles,
-        filesToModify,
-        fileContents, // Only existing files with content
-        newFiles, // List of files to be created
-        allFiles,
-        keywords,
-        codeSkeletons: skeletons,
-        sandbox,
-        repoPath,
-        projectId,
-        githubToken,
-        currentIteration: 0,
-        maxIterations: 3,
-        validationErrors: [],
-        typeErrors: [],
-        syntaxErrors: [],
-        allValidationsPassed: false,
-        status: "generating" as const,
-        generatedCode: null,
-        prUrl: null,
-        prNumber: null,
-        errorMessage: null,
-      });
+            dependentFiles.forEach((filePath) => {
+              const skeleton = codeSkeletonService.generateSkeleton(
+                expandedCodeGraph,
+                filePath
+              );
+              const formatted = codeSkeletonService.formatSkeletonForLLM(skeleton);
+              skeletons.set(filePath, `[DEPENDENT FILE]\n${formatted}`);
+            });
 
-      console.log("\nLangGraph Workflow Completed");
-      console.log(`Final Status: ${workflowResult.status}`);
-      console.log(
-        `Iterations: ${workflowResult.currentIteration}/${workflowResult.maxIterations}`
-      );
-      console.log(`Validations Passed: ${workflowResult.allValidationsPassed}`);
+            console.log(
+              `Generated ${skeletons.size} code skeletons (${relevantFiles.length} candidates + ${dependentFiles.length} dependents)`
+            );
+          } else {
+            console.log("No dependent files found.");
 
-      if (workflowResult.status !== "success" || !workflowResult.prUrl) {
-        const errorMsg =
-          workflowResult.errorMessage ||
-          "Workflow failed to generate valid code";
-        console.error(`\nWorkflow failed: ${errorMsg}`);
-        throw new Error(errorMsg);
+            relevantFiles.forEach((filePath) => {
+              const skeleton = codeSkeletonService.generateSkeleton(
+                codeGraph,
+                filePath
+              );
+              const formatted = codeSkeletonService.formatSkeletonForLLM(skeleton);
+              skeletons.set(filePath, formatted);
+            });
+            console.log(`Generated ${skeletons.size} code skeletons`);
+          }
+
+          console.log("Step 5: Selecting files to modify...");
+          const keywords = extractKeywords(task);
+          let filesToModify = await this.aiService.selectFilesToModifyWithSkeletons(
+            task,
+            skeletons,
+            repoPath
+          );
+
+          if (filesToModify.length === 0) {
+            console.warn(
+              "\nFallback: LLM selected 0 files, using hybrid search results"
+            );
+
+            const topN = Math.min(5, relevantFiles.length);
+            filesToModify = relevantFiles.slice(0, topN);
+
+            console.log(
+              `Selected top ${filesToModify.length} files from hybrid search`
+            );
+            filesToModify.forEach((file, idx) => {
+              console.log(`  ${idx + 1}. ${file}`);
+            });
+            console.log("");
+          }
+
+          await job.updateProgress(60);
+          console.log("Step 6: Analyzing files (existing vs new)...");
+          const { existingFiles, newFiles } =
+            await this.sandboxService.separateExistingAndNewFiles(
+              sandbox,
+              filesToModify,
+              repoPath
+            );
+
+          console.log("Step 6.5: Reading existing file contents...");
+          const fileContents =
+            existingFiles.length > 0
+              ? await this.sandboxService.getFileContents(
+                sandbox,
+                existingFiles,
+                Infinity,
+                repoPath
+              )
+              : new Map<string, string>();
+          const allFiles = await this.sandboxService.getFileTree(sandbox, repoPath);
+
+          await job.updateProgress(70);
+          console.log("\nStep 7: Starting LangGraph Code Generation Workflow");
+
+          const branchName = generateBranchName(task);
+          const graph = createCodeValidationGraph();
+
+          const workflowResult = await graph.invoke(
+            {
+              repoUrl: parentRepoUrl || repoUrl,
+              repoId: parentRepoId || repoId,
+              task,
+              forkUrl: repoUrl,
+              forkOwner: repoId.split("/")[0],
+              branchName,
+              isFork: isFork || false,
+              packageManager,
+              relevantFiles,
+              filesToModify,
+              fileContents, // Only existing files with content
+              newFiles, // List of files to be created
+              allFiles,
+              keywords,
+              codeSkeletons: skeletons,
+              sandbox,
+              repoPath,
+              projectId,
+              githubToken,
+              currentIteration: 0,
+              maxIterations: 3,
+              validationErrors: [],
+              typeErrors: [],
+              syntaxErrors: [],
+              allValidationsPassed: false,
+              status: "generating" as const,
+              generatedCode: null,
+              prUrl: null,
+              prNumber: null,
+              errorMessage: null,
+            },
+            { runName: `CodeValidation-Job-${job.id}` }
+          );
+
+          console.log("\nLangGraph Workflow Completed");
+          console.log(`Final Status: ${workflowResult.status}`);
+          console.log(
+            `Iterations: ${workflowResult.currentIteration}/${workflowResult.maxIterations}`
+          );
+          console.log(`Validations Passed: ${workflowResult.allValidationsPassed}`);
+
+          if (workflowResult.status !== "success" || !workflowResult.prUrl) {
+            const errorMsg =
+              workflowResult.errorMessage ||
+              "Workflow failed to generate valid code";
+            console.error(`\nWorkflow failed: ${errorMsg}`);
+            throw new Error(errorMsg);
+          }
+
+          console.log(`\nPR Created: ${workflowResult.prUrl}`);
+          console.log(`PR Number: #${workflowResult.prNumber}`);
+
+          console.log("\nStep 8: Generating file diffs...");
+          const fileDiffs = await this.getFileDiffs(
+            sandbox,
+            repoPath,
+            workflowResult.generatedCode?.fileOperations || []
+          );
+          console.log(`Generated diffs for ${fileDiffs.length} files`);
+
+          await job.updateProgress(100);
+          console.log("\nSandbox will remain active for 30 minutes");
+
+          console.log(`\nJob ${job.id} completed successfully!`);
+
+          return {
+            success: true,
+            prUrl: workflowResult.prUrl,
+            prNumber: workflowResult.prNumber!,
+            fileDiffs,
+            fileOperations: workflowResult.generatedCode?.fileOperations || [],
+            explanation: workflowResult.generatedCode?.explanation || "",
+          };
+        } catch (error) {
+          console.error(`Job ${job.id} failed:`, error);
+          await this.sandboxService.cleanup(projectId);
+          throw error;
+        }
+      },
+      {
+        name: `OpenSWE Job #${job.id}`,
+        run_type: "chain",
+        metadata: {
+          jobId: job.id,
+          repoUrl: job.data.repoUrl,
+          task: job.data.task,
+          repoId: job.data.repoId,
+        },
       }
-
-      console.log(`\nPR Created: ${workflowResult.prUrl}`);
-      console.log(`PR Number: #${workflowResult.prNumber}`);
-
-      console.log("\nStep 8: Generating file diffs...");
-      const fileDiffs = await this.getFileDiffs(
-        sandbox,
-        repoPath,
-        workflowResult.generatedCode?.fileOperations || []
-      );
-      console.log(`Generated diffs for ${fileDiffs.length} files`);
-
-      await job.updateProgress(100);
-      console.log("\nSandbox will remain active for 30 minutes");
-
-      console.log(`\nJob ${job.id} completed successfully!`);
-
-      return {
-        success: true,
-        prUrl: workflowResult.prUrl,
-        prNumber: workflowResult.prNumber!,
-        fileDiffs,
-        fileOperations: workflowResult.generatedCode?.fileOperations || [],
-        explanation: workflowResult.generatedCode?.explanation || "",
-      };
-    } catch (error) {
-      console.error(`Job ${job.id} failed:`, error);
-      await this.sandboxService.cleanup(projectId);
-      throw error;
-    }
+    )();
   }
 
   private async getFileDiffs(

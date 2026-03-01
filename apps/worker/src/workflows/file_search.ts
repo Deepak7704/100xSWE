@@ -1,6 +1,6 @@
 import { StateGraph, START, END, Annotation } from "@langchain/langgraph";
 import { SandboxExecutor } from "../lib/sandbox_executor";
-import { generateText } from "ai";
+import { tracedGenerateText as generateText } from "../lib/langsmith";
 import gemini from "../lib/ai_config";
 
 const GraphState = Annotation.Root({
